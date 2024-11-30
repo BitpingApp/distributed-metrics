@@ -25,16 +25,26 @@ You can also specify the network type of the reporting device such as if its a R
 
 ```toml
 [[metric]]
-prefix = "example_com"
-type = "Dns"
+prefix = "example_com_nld"
+type = "dns"
 endpoint = "example.com"
-frequency_ms = 60000   # Check every minute
+frequency_ms = 1000 # Check every minute
+[metric.network]
+proxy = "denied"
+mobile = "allowed"
+residential = "required"
+country_code = "NL" # The Netherlands
 
 [[metric]]
-prefix = "critical_service"
-type = "Dns"
+prefix = "bitping"
+type = "dns"
 endpoint = "bitping.com"
-frequency_ms = 10000        # Check every 10 seconds
+frequency_ms = 1000
+[metric.network]
+proxy = "denied"
+mobile = "allowed"
+residential = "required"
+continent_code = "OC" # Any country in Oceania
 ```
 
 #### Exposed Metrics
