@@ -1,7 +1,11 @@
 [package]
 name = "dns-metric-collector"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
+repository = "https://github.com/BitpingApp/distributed-metrics"
+homepage = "https://bitping.com"
+authors = ["Firaenix <Nick.Carton@gmail.com>"]
+description = "A monitoring tool backed by Bitping's distributed network, exposed as a Prometheus metrics endpoint"
 
 [dependencies]
 progenitor = { version = "0.8.0" }
