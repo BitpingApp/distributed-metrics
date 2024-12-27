@@ -1,28 +1,20 @@
 use crate::config::{Conf, MetricConfig, MetricType};
-use collector::{metrics_processor, LocationInfo, MetricUpdate, MetricsHandle};
+use collectors::runner::run_collector;
+use collectors::{dns, hls, icmp, Collector};
 use color_eyre::eyre::{Context, Result};
+use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use poem::middleware::{AddData, Tracing};
+use poem::web::Data;
+use poem::EndpointExt;
+use poem::{get, handler, listener::TcpListener, web::Path, Route, Server};
 use progenitor::generate_api;
-use prometheus::{Counter, CounterVec, Gauge, GaugeVec, Opts};
-use prometheus::{Encoder, Registry, TextEncoder};
-use reqwest::StatusCode;
-use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::{Arc, LazyLock};
 use tokio::join;
-use tokio::sync::{mpsc, oneshot};
 use tokio::task::LocalSet;
 use tracing::{debug, error, info, instrument, warn};
-use tracing_subscriber::Layer;
-use types::{
-    PerformDnsBodyContinentCode, PerformDnsBodyCountryCode, PerformDnsBodyMobile,
-    PerformDnsBodyProxy, PerformDnsBodyResidential,
-};
-use web::spawn_http_server;
 
-mod collector;
+mod collectors;
 mod config;
-mod metrics;
-mod web;
 
 generate_api!(spec = "./api-spec.json", interface = Builder);
 
@@ -59,6 +51,11 @@ static API_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::new_with_client("https://api.bitping.com/v2", req_client)
 });
 
+#[handler]
+fn render_prom(state: Data<&PrometheusHandle>) -> String {
+    state.render()
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     setup().await?;
@@ -66,136 +63,80 @@ async fn main() -> Result<()> {
     info!("Starting DNS metrics collector");
     let config = Conf::new().context("Failed to load configuration")?;
 
-    // Create metrics handle
-    let (metrics_handle, rx) = MetricsHandle::new()?;
+    let builder = PrometheusBuilder::new();
+    let handle = builder
+        .install_recorder()
+        .expect("failed to install recorder");
 
-    // Spawn metrics processor
-    tokio::spawn(async move {
-        if let Err(e) = metrics_processor(rx).await {
-            error!("Metrics processor error: {}", e);
-        }
-    });
+    let app = Route::new()
+        .at("/metrics", get(render_prom))
+        .with(AddData::new(handle));
+
+    let http_server = Server::new(TcpListener::bind("0.0.0.0:3000")).run(app);
 
     // Start collection tasks
     let local_set = LocalSet::new();
-    spawn_collectors(config, metrics_handle.clone(), &local_set).await?;
 
-    let http_server = spawn_http_server(metrics_handle);
+    spawn_collectors(config, &local_set).await?;
 
-    // Drive both
     join!(http_server, local_set);
 
     Ok(())
 }
 
-async fn spawn_collectors(
-    config: Conf,
-    metrics: MetricsHandle,
-    local_set: &LocalSet,
-) -> Result<()> {
-    for metric in config.metric {
-        if matches!(metric.metric_type, MetricType::Dns) {
-            debug!("Setting up collection for prefix: {}", metric.prefix);
-            let frequency = tokio::time::Duration::from_millis(metric.frequency_ms);
+// First, let's set up the metrics registration at startup (this would go in your initialization code)
+fn register_dns_metrics(prefix: &str) {
+    // Basic counters
+    metrics::describe_counter!(
+        format!("{}_dns_lookup_failures_total", prefix),
+        "Total number of DNS lookup failures"
+    );
 
-            let metric_config = metric.clone();
-            let metrics = metrics.clone();
-            local_set.spawn_local(async move {
-                loop {
-                    let country_code = metric_config
-                        .network
-                        .as_ref()
-                        .and_then(|x| x.country_code)
-                        .map(|c| c.to_alpha2().to_string())
-                        .and_then(|x| PerformDnsBodyCountryCode::from_str(&x).ok());
+    // Histograms for durations
+    metrics::describe_histogram!(
+        format!("{}_dns_lookup_duration_seconds", prefix),
+        "Time taken to perform DNS lookup in seconds"
+    );
 
-                    let continent_code = metric_config
-                        .network
-                        .as_ref()
-                        .and_then(|x| x.continent_code.clone())
-                        .and_then(|c| PerformDnsBodyContinentCode::from_str(c.as_ref()).ok());
+    // Gauges
+    metrics::describe_gauge!(
+        format!("{}_dns_records_returned", prefix),
+        "Number of DNS records returned by type"
+    );
 
-                    let mobile = metric_config
-                        .network
-                        .as_ref()
-                        .map(|n| n.mobile.as_ref().to_uppercase())
-                        .and_then(|mo| PerformDnsBodyMobile::from_str(&mo).ok())
-                        .unwrap_or_else(PerformDnsBodyMobile::default);
+    metrics::describe_gauge!(
+        format!("{}_dns_lookup_success_ratio", prefix),
+        "Ratio of successful DNS lookups"
+    );
+}
 
-                    let residential = metric_config
-                        .network
-                        .as_ref()
-                        .map(|n| n.residential.as_ref().to_uppercase())
-                        .and_then(|mo| PerformDnsBodyResidential::from_str(&mo).ok())
-                        .unwrap_or_else(PerformDnsBodyResidential::default);
-
-                    let proxy = metric_config
-                        .network
-                        .as_ref()
-                        .map(|n| n.proxy.as_ref().to_uppercase())
-                        .and_then(|mo| PerformDnsBodyProxy::from_str(&mo).ok())
-                        .unwrap_or_else(PerformDnsBodyProxy::default);
-
-                    info!(?metric_config, ?country_code, "Sending request");
-
-                    match API_CLIENT
-                        .perform_dns()
-                        .body_map(|body| {
-                            body.hostnames([metric_config.endpoint.clone()])
-                                .country_code(country_code)
-                                .continent_code(continent_code)
-                                .mobile(mobile)
-                                .residential(residential)
-                                .proxy(proxy)
-                        })
-                        .send()
-                        .await
-                    {
-                        Ok(response) => {
-                            let response = response.into_inner();
-
-                            // Safe array access
-                            if let Some(result) = response.results.first() {
-                                // Handle optional fields safely
-                                if let (Some(dns_result), Some(node_info)) =
-                                    (result.result.clone(), response.node_info)
-                                {
-                                    // Safely handle optional fields from node_info
-                                        let _ = metrics
-                                            .update_metrics(MetricUpdate {
-                                                prefix: metric_config.prefix.clone(),
-                                                location: LocationInfo {
-                                                    continent: node_info.continent_code.clone(),
-                                                    country_code: node_info.country_code.clone(),
-                                                    city:node_info.city.clone(),
-                                                    isp: node_info.isp.clone(),
-                                                },
-                                                record_type: "IP".into(),
-                                                duration: result.duration.unwrap_or(0.0),
-                                                success: true,
-                                                record_count: dns_result.ips.len() as u64,
-                                                ttl: 0,
-                                            })
-                                            .await;
-                                } else {
-                                    error!("Missing DNS result or node info");
-                                }
-                            } else {
-                                error!("No results returned from API");
-                            }
-                        }
-                        Err(e) => {
-                            if let Some(StatusCode::NOT_FOUND) = e.status() {
-                                warn!(?metric_config.network,"No nodes were found for the given criteria");
-                            } else {
-                                error!("API request failed: {:#?}", e);
-                            }
-                        }
+async fn spawn_collectors(config: Conf, local_set: &LocalSet) -> Result<()> {
+    for metric in config.metrics {
+        match metric.metric_type {
+            MetricType::Dns => {
+                let collector = dns::DnsCollector::new(metric);
+                local_set.spawn_local(async move {
+                    if let Err(e) = run_collector(collector).await {
+                        error!("DNS collector failed: {}", e);
                     }
-
-                    tokio::time::sleep(frequency).await;
-                }
-            });
+                });
+            }
+            MetricType::Icmp => {
+                let collector = icmp::IcmpCollector::new(metric);
+                local_set.spawn_local(async move {
+                    if let Err(e) = run_collector(collector).await {
+                        error!("ICMP collector failed: {}", e);
+                    }
+                });
+            }
+            MetricType::Hls => {
+                let collector = hls::HlsCollector::new(metric);
+                local_set.spawn_local(async move {
+                    if let Err(e) = run_collector(collector).await {
+                        error!("ICMP collector failed: {}", e);
+                    }
+                });
+            }
         }
     }
 

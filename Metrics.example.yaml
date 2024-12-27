@@ -1,0 +1,29 @@
+metrics:
+  - type: dns
+    endpoint: jup.ag
+    frequency_ms: 1000
+    network:
+      proxy: denied
+      mobile: allowed
+      residential: required
+      country_code: PHL
+
+  - type: dns
+    endpoint: bitping.com
+    frequency_ms: 1000
+    network:
+      proxy: denied
+      mobile: allowed
+      residential: required
+
+  - type: icmp
+    endpoint: bitping.com
+    frequency_ms: 1000
+    network:
+      proxy: denied
+      mobile: allowed
+      residential: required
+
+  - type: hls
+    endpoint: https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mp4/.m3u8
+    frequency_ms: 15000

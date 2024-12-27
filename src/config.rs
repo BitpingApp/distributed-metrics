@@ -10,7 +10,7 @@ use strum::{AsRefStr, EnumString};
 // Configuration structs
 #[derive(Deserialize)]
 pub struct Conf {
-    pub metric: Vec<MetricConfig>,
+    pub metrics: Vec<MetricConfig>,
 }
 
 #[derive(Deserialize, EnumString, AsRefStr, Clone, Debug)]
@@ -18,10 +18,15 @@ pub struct Conf {
 pub enum MetricType {
     #[strum(serialize = "dns")]
     Dns,
+    #[strum(serialize = "icmp")]
+    Icmp,
+    #[strum(serialize = "hls")]
+    Hls,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct MetricConfig {
+    #[serde(default)]
     pub prefix: String,
     #[serde(rename = "type")]
     pub metric_type: MetricType,
@@ -64,7 +69,6 @@ impl Conf {
     pub fn new() -> Result<Self> {
         Figment::new()
             .join(Env::prefixed("BITPING_"))
-            .merge(Toml::file("Metrics.toml"))
             .merge(Yaml::file("Metrics.yaml"))
             .extract()
             .context("Unable to read config file")

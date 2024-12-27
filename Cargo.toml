@@ -8,8 +8,7 @@ authors = ["Firaenix <Nick.Carton@gmail.com>"]
 description = "A monitoring tool backed by Bitping's distributed network, exposed as a Prometheus metrics endpoint"
 
 [dependencies]
-progenitor = { version = "0.8.0" }
-prometheus = "0.13.4"
+progenitor = { version = "0.8.0", features = [] }
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "stream",
@@ -17,7 +16,6 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.40.0", features = ["full"] }
-tokio-stream = { version = "0.1", features = [] }
 serde_json = { version = "1" }
 eyre = "0.6.12"
 keshvar = { version = "0.5.0", features = [
@@ -27,13 +25,16 @@ keshvar = { version = "0.5.0", features = [
   "subdivisions",
   "serde-derive",
 ] }
-warp = "0.3.7"
 strum = { version = "0.26", features = ["derive"] }
 figment = { version = "0.10", features = ["toml", "yaml", "env"] }
 color-eyre = "0.6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 regress = "0.10.1"
+metrics = "0.24.1"
+metrics-exporter-prometheus = "0.16.0"
+metrics-dashboard = "0.3.3"
+poem = { version = "3.1.5", features = ["rustls"] }
 
 # The profile that 'dist' will build with
 [profile.dist]
