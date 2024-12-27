@@ -1,17 +1,17 @@
-use crate::config::{Conf, MetricConfig, MetricType};
+use crate::config::{Conf, MetricType};
 use collectors::runner::run_collector;
 use collectors::{dns, hls, icmp, Collector};
 use color_eyre::eyre::{Context, Result};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use poem::middleware::{AddData, Tracing};
+use poem::middleware::AddData;
 use poem::web::Data;
 use poem::EndpointExt;
-use poem::{get, handler, listener::TcpListener, web::Path, Route, Server};
+use poem::{get, handler, listener::TcpListener, Route, Server};
 use progenitor::generate_api;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use tokio::join;
 use tokio::task::LocalSet;
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{error, info};
 
 mod collectors;
 mod config;

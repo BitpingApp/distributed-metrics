@@ -173,7 +173,7 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .record(result.duration.unwrap_or(0.0) as f64 / 1000.0); // Convert ms to seconds
+                .record(result.duration.unwrap_or(0.0) / 1000.0); // Convert ms to seconds
 
                 // Record latency metrics
                 gauge!(
@@ -185,7 +185,7 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .set(icmp_result.min as f64);
+                .set(icmp_result.min);
 
                 gauge!(
                     format!("{}icmp_ping_latency_max_ms", prefix),
@@ -196,7 +196,7 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .set(icmp_result.max as f64);
+                .set(icmp_result.max);
 
                 gauge!(
                     format!("{}icmp_ping_latency_avg_ms", prefix),
@@ -230,7 +230,7 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .set(icmp_result.packet_loss as f64 / 100.0);
+                .set(icmp_result.packet_loss / 100.0);
 
                 gauge!(
                     format!("{}icmp_ping_packets_sent", prefix),
@@ -241,7 +241,7 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .set(icmp_result.packets_sent as f64);
+                .set(icmp_result.packets_sent);
 
                 gauge!(
                     format!("{}icmp_ping_packets_received", prefix),
@@ -252,11 +252,11 @@ impl IcmpCollector {
                     "endpoint" => result.endpoint.clone(),
                     "ip_address" => icmp_result.ip_address.clone()
                 )
-                .set(icmp_result.packets_recv as f64);
+                .set(icmp_result.packets_recv);
 
                 // Record success metrics
                 let success_ratio = if icmp_result.packets_sent > 0.0 {
-                    icmp_result.packets_recv as f64 / icmp_result.packets_sent as f64
+                    icmp_result.packets_recv / icmp_result.packets_sent
                 } else {
                     0.0
                 };

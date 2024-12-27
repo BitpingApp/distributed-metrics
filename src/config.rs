@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 use eyre::{Context, Result};
 use figment::{
-    providers::{Env, Format, Toml, Yaml},
+    providers::{Env, Format, Yaml},
     Figment,
 };
 use strum::{AsRefStr, EnumString};

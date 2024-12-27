@@ -184,7 +184,7 @@ impl HlsCollector {
                     "isp" => node_info.isp.clone(),
                     "endpoint" => result.endpoint.clone()
                 )
-                .record(result.duration.unwrap_or_default() as f64 / 1000.0);
+                .record(result.duration.unwrap_or_default() / 1000.0);
 
                 gauge!(
                     format!("{}hls_master_size_bytes", prefix),
@@ -194,7 +194,7 @@ impl HlsCollector {
                     "isp" => node_info.isp.clone(),
                     "endpoint" => result.endpoint.clone()
                 )
-                .set(master.clone().unwrap().download_metrics.unwrap().size as f64);
+                .set(master.clone().unwrap().download_metrics.unwrap().size);
 
                 gauge!(
                     format!("{}hls_renditions_count", prefix),
@@ -216,7 +216,7 @@ impl HlsCollector {
                         "isp" => node_info.isp.clone(),
                         "endpoint" => result.endpoint.clone()
                     )
-                    .record(metrics.tcp_connect_duration_ms as f64 / 1000.0);
+                    .record(metrics.tcp_connect_duration_ms / 1000.0);
 
                     histogram!(
                         format!("{}hls_ttfb_duration_seconds", prefix),
@@ -226,7 +226,7 @@ impl HlsCollector {
                         "isp" => node_info.isp.clone(),
                         "endpoint" => result.endpoint.clone()
                     )
-                    .record(metrics.http_ttfb_duration_ms as f64 / 1000.0);
+                    .record(metrics.http_ttfb_duration_ms / 1000.0);
 
                     // ... other connection metrics
                 }
@@ -245,7 +245,7 @@ impl HlsCollector {
                             "resolution" => rendition.resolution.clone(),
                             "bandwidth" => rendition.bandwidth.to_string()
                         )
-                        .record(fragment.download_metrics.clone().unwrap().time_ms as f64 / 1000.0);
+                        .record(fragment.download_metrics.clone().unwrap().time_ms / 1000.0);
 
                         gauge!(
                             format!("{}hls_fragment_size_bytes", prefix),
@@ -257,7 +257,7 @@ impl HlsCollector {
                             "resolution" => rendition.resolution.clone(),
                             "bandwidth" => rendition.bandwidth.to_string()
                         )
-                        .set(fragment.download_metrics.clone().unwrap().size as f64);
+                        .set(fragment.download_metrics.clone().unwrap().size);
 
                         gauge!(
                             format!("{}hls_fragment_bandwidth_bytes_per_second", prefix),
