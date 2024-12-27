@@ -121,9 +121,9 @@ jobs:
         if: "runner.os == 'Linux'"
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake gcc-9 g++-9
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 100
+          sudo apt-get update
+          # Install latest GCC (currently GCC 13)
+          sudo apt-get install -y cmake gcc g++
       - name: "Configure sccache"
         run: |
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
