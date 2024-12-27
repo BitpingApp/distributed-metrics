@@ -84,32 +84,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// First, let's set up the metrics registration at startup (this would go in your initialization code)
-fn register_dns_metrics(prefix: &str) {
-    // Basic counters
-    metrics::describe_counter!(
-        format!("{}_dns_lookup_failures_total", prefix),
-        "Total number of DNS lookup failures"
-    );
-
-    // Histograms for durations
-    metrics::describe_histogram!(
-        format!("{}_dns_lookup_duration_seconds", prefix),
-        "Time taken to perform DNS lookup in seconds"
-    );
-
-    // Gauges
-    metrics::describe_gauge!(
-        format!("{}_dns_records_returned", prefix),
-        "Number of DNS records returned by type"
-    );
-
-    metrics::describe_gauge!(
-        format!("{}_dns_lookup_success_ratio", prefix),
-        "Ratio of successful DNS lookups"
-    );
-}
-
 async fn spawn_collectors(config: Conf, local_set: &LocalSet) -> Result<()> {
     for metric in config.metrics {
         match metric.metric_type {
