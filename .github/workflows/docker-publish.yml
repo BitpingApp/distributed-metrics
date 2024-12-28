@@ -3,7 +3,7 @@ name: Publish Docker image
 on:
   workflow_call:
     inputs:
-      tag:
+      plan:
         required: true
         type: string
     secrets:
@@ -16,10 +16,21 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+      - name: Parse plan
+        id: plan
+        run: |
+          # Extract the tag from plan.outputs.tag
+          echo "Plan content for debugging:"
+          echo '${{ inputs.plan }}' | jq .
+          TAG=$(echo '${{ inputs.plan }}' | jq -r '.tag')
+          VERSION=$(echo '${{ inputs.plan }}' | jq -r '.releases[0].app_version')
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ steps.plan.outputs.TAG }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -33,12 +44,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
-        env:
-          TAG: ${{ inputs.tag }}
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -47,6 +52,6 @@ jobs:
           push: true
           tags: |
             bitping/distributed-metrics:latest
-            bitping/distributed-metrics:${{ steps.version.outputs.VERSION }}
+            bitping/distributed-metrics:${{ steps.plan.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

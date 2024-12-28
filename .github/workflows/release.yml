@@ -358,3 +358,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+  custom-docker-publish:
+    needs:
+      - plan
+      - announce
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      plan: ${{ needs.plan.outputs.val }}
+    secrets: inherit
