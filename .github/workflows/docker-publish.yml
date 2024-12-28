@@ -22,15 +22,13 @@ jobs:
           # Extract the tag from plan.outputs.tag
           echo "Plan content for debugging:"
           echo '${{ inputs.plan }}' | jq .
-          TAG=$(echo '${{ inputs.plan }}' | jq -r '.tag')
           VERSION=$(echo '${{ inputs.plan }}' | jq -r '.releases[0].app_version')
-          echo "TAG=$TAG" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.plan.outputs.TAG }}
+          ref: ${{ steps.plan.outputs.VERSION }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
