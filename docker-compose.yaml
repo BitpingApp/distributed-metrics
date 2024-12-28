@@ -1,0 +1,11 @@
+version: "3"
+services:
+  metrics:
+    image: bitping/distributed-metrics
+    ports:
+      - "3000:3000"
+    environment:
+      - BITPING_API_KEY=your_api_key
+    volumes:
+      - ./Metrics.yaml:/app/Metrics.yaml
+    restart: unless-stopped
