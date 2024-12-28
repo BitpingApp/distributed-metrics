@@ -43,7 +43,7 @@ docker run -d \
   -p 3000:3000 \
   -e BITPING_API_KEY=your_api_key \
   -v $(pwd)/Metrics.yaml:/app/Metrics.yaml \
-  bitpingapp/distributed-metrics
+  bitping/distributed-metrics
 ```
 
 ### Run Docker Compose
@@ -53,7 +53,7 @@ Save the following yaml to docker-compose.yaml
 version: '3'
 services:
   metrics:
-    image: bitpingapp/distributed-metrics
+    image: bitping/distributed-metrics
     ports:
       - "3000:3000"
     environment:
