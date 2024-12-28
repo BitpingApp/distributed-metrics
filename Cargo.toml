@@ -1,5 +1,5 @@
 [package]
-name = "dns-metric-collector"
+name = "distributed-metrics"
 version = "1.0.0"
 edition = "2021"
 repository = "https://github.com/BitpingApp/distributed-metrics"
