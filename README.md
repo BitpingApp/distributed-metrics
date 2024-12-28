@@ -15,11 +15,19 @@ You can also specify the network type of the reporting device such as if its a R
    ```bash
    export BITPING_API_KEY=your_api_key
    ```
+5. Follow the install instructions below
+6. Run:
+   ```bash
+   distributed-metrics
+   ```
+Metrics will be available at `http://localhost:3000/metrics` in Prometheus format.
+
+## Installation
 
 ### Install prebuilt binaries via shell script
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-metrics/releases/download/0.1.0/dns-metric-collector-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-metrics/releases/latest/download/dns-metric-collector-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via Homebrew
@@ -28,7 +36,37 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-
 brew install BitpingApp/tap/dns-metric-collector
 ```
 
-Metrics will be available at `http://localhost:3000/metrics` in Prometheus format.
+### Run Docker Container
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e BITPING_API_KEY=your_api_key \
+  -v $(pwd)/Metrics.yaml:/app/Metrics.yaml \
+  bitpingapp/distributed-metrics
+```
+
+### Run Docker Compose
+
+Save the following yaml to docker-compose.yaml
+```yaml
+version: '3'
+services:
+  metrics:
+    image: bitpingapp/distributed-metrics
+    ports:
+      - "3000:3000"
+    environment:
+      - BITPING_API_KEY=your_api_key
+    volumes:
+      - ./Metrics.yaml:/app/Metrics.yaml
+    restart: unless-stopped
+```
+
+Run:
+```bash
+docker compose up -d
+```
 
 ## Supported Protocols
 
