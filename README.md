@@ -33,7 +33,7 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-
 ### Install prebuilt binaries via Homebrew
 
 ```sh
-brew install BitpingApp/tap/dns-metric-collector
+brew install BitpingApp/tap/distributed-metrics
 ```
 
 ### Run Docker Container
