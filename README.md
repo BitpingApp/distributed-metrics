@@ -27,7 +27,7 @@ Metrics will be available at `http://localhost:3000/metrics` in Prometheus forma
 ### Install prebuilt binaries via shell script
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-metrics/releases/latest/download/dns-metric-collector-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/BitpingApp/distributed-metrics/releases/latest/download/distributed-metrics-installer.sh | sh
 ```
 
 ### Install prebuilt binaries via Homebrew
