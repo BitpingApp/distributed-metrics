@@ -163,96 +163,42 @@ impl IcmpCollector {
             {
                 let prefix = &self.config.prefix;
 
+                let labels = [
+                    ("country_code", node_info.country_code.clone()),
+                    ("continent", node_info.continent_code.clone()),
+                    ("city", node_info.city.clone()),
+                    ("isp", node_info.isp.clone()),
+                    // ("os", node_info.operating_system.clone()),
+                    // ("residential", node_info.residential.to_string()),
+                    // ("proxy", node_info.proxy.to_string()),
+                    // ("mobile", node_info.mobile.to_string()),
+                    ("endpoint", result.endpoint.clone()),
+                    ("ip_address", icmp_result.ip_address.clone()),
+                ];
+
                 // Record overall request duration
-                histogram!(
-                    format!("{}icmp_ping_duration_seconds", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .record(result.duration.unwrap_or(0.0) / 1000.0); // Convert ms to seconds
+                histogram!(format!("{}icmp_ping_duration_seconds", prefix), &labels)
+                    .record(result.duration.unwrap_or(0.0) / 1000.0); // Convert ms to seconds
 
                 // Record latency metrics
-                gauge!(
-                    format!("{}icmp_ping_latency_min_ms", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.min);
+                gauge!(format!("{}icmp_ping_latency_min_ms", prefix), &labels).set(icmp_result.min);
 
-                gauge!(
-                    format!("{}icmp_ping_latency_max_ms", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.max);
+                gauge!(format!("{}icmp_ping_latency_max_ms", prefix), &labels).set(icmp_result.max);
 
-                gauge!(
-                    format!("{}icmp_ping_latency_avg_ms", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.avg);
+                gauge!(format!("{}icmp_ping_latency_avg_ms", prefix), &labels).set(icmp_result.avg);
 
-                gauge!(
-                    format!("{}icmp_ping_latency_stddev_ms", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.std_dev);
+                gauge!(format!("{}icmp_ping_latency_stddev_ms", prefix), &labels)
+                    .set(icmp_result.std_dev);
 
                 // Record packet metrics
-                gauge!(
-                    format!("{}icmp_ping_packet_loss_ratio", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.packet_loss / 100.0);
+                gauge!(format!("{}icmp_ping_packet_loss_ratio", prefix), &labels)
+                    .set(icmp_result.packet_loss / 100.0);
 
-                gauge!(
-                    format!("{}icmp_ping_packets_sent", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.packets_sent);
+                gauge!(format!("{}icmp_ping_packets_sent", prefix), &labels)
+                    .set(icmp_result.packets_sent);
 
-                gauge!(
-                    format!("{}icmp_ping_packets_received", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(icmp_result.packets_recv);
+                gauge!(format!("{}icmp_ping_packets_received", prefix), &labels)
+                    .set(icmp_result.packets_recv);
 
                 // Record success metrics
                 let success_ratio = if icmp_result.packets_sent > 0.0 {
@@ -261,27 +207,9 @@ impl IcmpCollector {
                     0.0
                 };
 
-                gauge!(
-                    format!("{}icmp_ping_success_ratio", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .set(success_ratio);
+                gauge!(format!("{}icmp_ping_success_ratio", prefix), &labels).set(success_ratio);
 
-                counter!(
-                    format!("{}icmp_ping_success_total", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone(),
-                    "ip_address" => icmp_result.ip_address.clone()
-                )
-                .increment(1);
+                counter!(format!("{}icmp_ping_success_total", prefix), &labels).increment(1);
             } else {
                 error!("Missing ICMP result or node info");
                 self.record_failure("missing_data");
