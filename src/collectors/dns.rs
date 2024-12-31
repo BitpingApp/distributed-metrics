@@ -239,8 +239,8 @@ impl DnsCollector {
                         ),
                     ];
 
-                    // Check if all record types have at least one entry
-                    let has_all_records = record_counts.iter().all(|(_, count, _)| *count > 0);
+                    // Check if any of the record types have at least one entry
+                    let has_all_records = record_counts.iter().any(|(_, count, _)| *count > 0);
 
                     if has_all_records {
                         counter!(
