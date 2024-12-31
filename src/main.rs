@@ -1,14 +1,17 @@
-use crate::config::{Conf, MetricType};
-use collectors::runner::run_collector;
+use crate::config::{Conf, MetricConfig};
+use collectors::icmp::IcmpCollector;
 use collectors::{dns, hls, icmp, Collector};
 use color_eyre::eyre::{Context, Result};
+use config::MetricType;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use metrics_util::MetricKindMask;
 use poem::middleware::AddData;
 use poem::web::Data;
 use poem::EndpointExt;
 use poem::{get, handler, listener::TcpListener, Route, Server};
 use progenitor::generate_api;
 use std::sync::LazyLock;
+use std::time::Duration;
 use tokio::join;
 use tokio::task::LocalSet;
 use tracing::{error, info};
@@ -63,8 +66,12 @@ async fn main() -> Result<()> {
     info!("Starting DNS metrics collector");
     let config = Conf::new().context("Failed to load configuration")?;
 
-    let builder = PrometheusBuilder::new();
-    let handle = builder
+    let handle = PrometheusBuilder::new()
+        .idle_timeout(
+            MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM | MetricKindMask::GAUGE,
+            Some(config.global_config.metric_clear_timeout),
+        )
+        .upkeep_timeout(config.global_config.metric_clear_timeout.saturating_mul(2))
         .install_recorder()
         .expect("failed to install recorder");
 
@@ -72,41 +79,42 @@ async fn main() -> Result<()> {
         .at("/metrics", get(render_prom))
         .with(AddData::new(handle));
 
-    let http_server = Server::new(TcpListener::bind("0.0.0.0:3000")).run(app);
+    let http_server = Server::new(TcpListener::bind("[::]:3000")).run(app);
 
     // Start collection tasks
     let local_set = LocalSet::new();
 
     spawn_collectors(config, &local_set).await?;
 
-    join!(http_server, local_set);
+    let (rs, _) = join!(http_server, local_set);
+    rs?;
 
     Ok(())
 }
 
 async fn spawn_collectors(config: Conf, local_set: &LocalSet) -> Result<()> {
     for metric in config.metrics {
-        match metric.metric_type {
-            MetricType::Dns => {
-                let collector = dns::DnsCollector::new(metric);
+        match metric {
+            MetricType::Dns(config) => {
                 local_set.spawn_local(async move {
-                    if let Err(e) = run_collector(collector).await {
+                    let collector = dns::DnsCollector::new(config);
+                    if let Err(e) = collector.run().await {
                         error!("DNS collector failed: {}", e);
                     }
                 });
             }
-            MetricType::Icmp => {
-                let collector = icmp::IcmpCollector::new(metric);
+            MetricType::Icmp(config) => {
                 local_set.spawn_local(async move {
-                    if let Err(e) = run_collector(collector).await {
+                    let collector = IcmpCollector::new(config);
+                    if let Err(e) = collector.run().await {
                         error!("ICMP collector failed: {}", e);
                     }
                 });
             }
-            MetricType::Hls => {
-                let collector = hls::HlsCollector::new(metric);
+            MetricType::Hls(config) => {
                 local_set.spawn_local(async move {
-                    if let Err(e) = run_collector(collector).await {
+                    let collector = hls::HlsCollector::new(config);
+                    if let Err(e) = collector.run().await {
                         error!("ICMP collector failed: {}", e);
                     }
                 });

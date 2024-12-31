@@ -1,3 +1,5 @@
+use std::{collections::HashMap, time::Duration};
+
 use serde::Deserialize;
 
 use eyre::{Context, Result};
@@ -10,28 +12,60 @@ use strum::{AsRefStr, EnumString};
 // Configuration structs
 #[derive(Deserialize)]
 pub struct Conf {
-    pub metrics: Vec<MetricConfig>,
+    pub metrics: Vec<MetricType>,
+
+    #[serde(flatten)]
+    pub global_config: GlobalConfig,
 }
 
-#[derive(Deserialize, EnumString, AsRefStr, Clone, Debug)]
+#[derive(Deserialize)]
+pub struct GlobalConfig {
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_metric_clear_timeout")]
+    pub metric_clear_timeout: Duration,
+}
+
+fn default_metric_clear_timeout() -> Duration {
+    Duration::from_secs(10)
+}
+
+#[derive(Deserialize, AsRefStr, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
+#[serde(tag = "type")]
 pub enum MetricType {
-    #[strum(serialize = "dns")]
-    Dns,
-    #[strum(serialize = "icmp")]
-    Icmp,
-    #[strum(serialize = "hls")]
-    Hls,
+    Dns(DnsConfig),
+    Icmp(IcmpConfig),
+    Hls(HlsConfig),
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct HlsConfig {
+    #[serde(flatten)]
+    pub common_config: MetricConfig,
+
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct DnsConfig {
+    #[serde(flatten)]
+    pub common_config: MetricConfig,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct IcmpConfig {
+    #[serde(flatten)]
+    pub common_config: MetricConfig,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct MetricConfig {
     #[serde(default)]
     pub prefix: String,
-    #[serde(rename = "type")]
-    pub metric_type: MetricType,
     pub endpoint: String,
-    pub frequency_ms: u64,
+    #[serde(with = "humantime_serde")]
+    pub frequency: Duration,
 
     pub network: Option<NetworkCriteria>,
 }

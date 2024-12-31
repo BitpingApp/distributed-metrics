@@ -1,5 +1,5 @@
 use super::Collector;
-use crate::config::MetricConfig;
+use crate::config::{IcmpConfig, MetricConfig};
 use crate::types::{
     PerformIcmpBodyContinentCode, PerformIcmpBodyCountryCode, PerformIcmpBodyMobile,
     PerformIcmpBodyProxy, PerformIcmpBodyResidential, PerformIcmpResponse,
@@ -13,16 +13,18 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 pub struct IcmpCollector {
-    config: MetricConfig,
+    config: IcmpConfig,
 }
 
 impl Collector for IcmpCollector {
-    fn new(config: MetricConfig) -> Self {
+    type Config = IcmpConfig;
+
+    fn new(config: IcmpConfig) -> Self {
         Self { config }
     }
 
     fn register_metrics(&self) {
-        let prefix = &self.config.prefix;
+        let prefix = &self.config.common_config.prefix;
 
         // Basic counters
         metrics::describe_counter!(
@@ -83,13 +85,10 @@ impl Collector for IcmpCollector {
         );
     }
 
-    fn get_config(&self) -> &MetricConfig {
-        &self.config
-    }
-
     async fn perform_request(&self) -> Result<()> {
         let country_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.country_code)
@@ -98,6 +97,7 @@ impl Collector for IcmpCollector {
 
         let continent_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.continent_code.clone())
@@ -105,6 +105,7 @@ impl Collector for IcmpCollector {
 
         let mobile = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.mobile.as_ref().to_uppercase())
@@ -113,6 +114,7 @@ impl Collector for IcmpCollector {
 
         let residential = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.residential.as_ref().to_uppercase())
@@ -121,18 +123,19 @@ impl Collector for IcmpCollector {
 
         let proxy = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.proxy.as_ref().to_uppercase())
             .and_then(|mo| PerformIcmpBodyProxy::from_str(&mo).ok())
             .unwrap_or_default();
 
-        info!(?self.config, ?country_code, "Sending ICMP request");
+        info!(?self.config.common_config, ?country_code, "Sending ICMP request");
 
         match API_CLIENT
             .perform_icmp()
             .body_map(|body| {
-                body.hostnames([self.config.endpoint.clone()])
+                body.hostnames([self.config.common_config.endpoint.clone()])
                     .country_code(country_code)
                     .continent_code(continent_code)
                     .mobile(mobile)
@@ -153,6 +156,10 @@ impl Collector for IcmpCollector {
             }
         }
     }
+
+    fn get_frequency(&self) -> std::time::Duration {
+        self.config.common_config.frequency
+    }
 }
 
 impl IcmpCollector {
@@ -161,7 +168,7 @@ impl IcmpCollector {
             if let (Some(icmp_result), Some(node_info)) =
                 (result.result.clone(), response.node_info)
             {
-                let prefix = &self.config.prefix;
+                let prefix = &self.config.common_config.prefix;
 
                 let labels = [
                     ("country_code", node_info.country_code.clone()),
@@ -230,7 +237,7 @@ impl IcmpCollector {
         self.record_failure(error_type);
 
         if let Some(StatusCode::NOT_FOUND) = e.status() {
-            warn!(?self.config.network, "No nodes were found for the given criteria");
+            warn!(?self.config.common_config.network, "No nodes were found for the given criteria");
         } else {
             error!("API request failed: {:#?}", e);
         }
@@ -238,7 +245,7 @@ impl IcmpCollector {
 
     fn record_failure(&self, error_type: &str) {
         counter!(
-            format!("{}icmp_ping_failures_total", self.config.prefix),
+            format!("{}icmp_ping_failures_total", self.config.common_config.prefix),
             "error_type" => error_type.to_string()
         )
         .increment(1);

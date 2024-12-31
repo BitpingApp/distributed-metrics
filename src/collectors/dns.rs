@@ -1,6 +1,7 @@
 use super::Collector;
-use crate::config::MetricConfig;
+use crate::config::{DnsConfig, MetricConfig};
 use crate::types::{
+    PerformDnsBodyConfiguration, PerformDnsBodyConfigurationLookupTypesItem,
     PerformDnsBodyContinentCode, PerformDnsBodyCountryCode, PerformDnsBodyMobile,
     PerformDnsBodyProxy, PerformDnsBodyResidential, PerformDnsResponse, PerformDnsResponseNodeInfo,
     PerformDnsResponseResultsItemResult,
@@ -17,20 +18,18 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 pub struct DnsCollector {
-    config: MetricConfig,
+    config: DnsConfig,
 }
 
 impl Collector for DnsCollector {
-    fn new(config: MetricConfig) -> Self {
+    type Config = DnsConfig;
+
+    fn new(config: DnsConfig) -> Self {
         Self { config }
     }
 
-    fn get_config(&self) -> &MetricConfig {
-        &self.config
-    }
-
     fn register_metrics(&self) {
-        let prefix = &self.config.prefix;
+        let prefix = &self.config.common_config.prefix;
 
         metrics::describe_counter!(
             format!("{}dns_lookup_success_total", prefix),
@@ -40,11 +39,6 @@ impl Collector for DnsCollector {
         metrics::describe_counter!(
             format!("{}dns_lookup_failures_total", prefix),
             "Total number of DNS lookup failures"
-        );
-
-        metrics::describe_counter!(
-            format!("{}dns_lookup_errors_total", prefix),
-            "Count of specific DNS lookup errors by type"
         );
 
         metrics::describe_gauge!(
@@ -96,6 +90,7 @@ impl Collector for DnsCollector {
     async fn perform_request(&self) -> Result<()> {
         let country_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.country_code)
@@ -104,6 +99,7 @@ impl Collector for DnsCollector {
 
         let continent_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.continent_code.clone())
@@ -111,6 +107,7 @@ impl Collector for DnsCollector {
 
         let mobile = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.mobile.as_ref().to_uppercase())
@@ -119,6 +116,7 @@ impl Collector for DnsCollector {
 
         let residential = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.residential.as_ref().to_uppercase())
@@ -127,18 +125,19 @@ impl Collector for DnsCollector {
 
         let proxy = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.proxy.as_ref().to_uppercase())
             .and_then(|mo| PerformDnsBodyProxy::from_str(&mo).ok())
             .unwrap_or_default();
 
-        info!(?self.config, ?country_code, "Sending DNS request");
+        info!(?self.config.common_config, ?country_code, "Sending DNS request");
 
         match API_CLIENT
             .perform_dns()
             .body_map(|body| {
-                body.hostnames([self.config.endpoint.clone()])
+                body.hostnames([self.config.common_config.endpoint.clone()])
                     .country_code(country_code)
                     .continent_code(continent_code)
                     .mobile(mobile)
@@ -153,10 +152,14 @@ impl Collector for DnsCollector {
                 Ok(())
             }
             Err(e) => {
-                self.handle_error(e);
+                warn!(?e, "API Error");
                 Ok(())
             }
         }
+    }
+
+    fn get_frequency(&self) -> std::time::Duration {
+        self.config.common_config.frequency
     }
 }
 
@@ -165,7 +168,7 @@ impl DnsCollector {
         if let Some(result) = response.results.first() {
             if let (Some(dns_result), Some(node_info)) = (result.result.clone(), response.node_info)
             {
-                let prefix = &self.config.prefix;
+                let prefix = &self.config.common_config.prefix;
 
                 // Core labels - essential dimensions only
                 let common_labels = [
@@ -197,19 +200,7 @@ impl DnsCollector {
                     )
                     .record(result.duration.unwrap_or(0.0));
 
-                    counter!(
-                        format!("{}dns_lookup_success_total", prefix),
-                        &server_labels
-                    )
-                    .increment(1);
-
-                    gauge!(
-                        format!("{}dns_lookup_success_ratio", prefix),
-                        &server_labels
-                    )
-                    .set(1.0);
-
-                    // Then in the handle_response method:
+                    // Record counts and check for success/failure
                     let record_counts = [
                         (
                             "ip",
@@ -248,6 +239,31 @@ impl DnsCollector {
                         ),
                     ];
 
+                    // Check if all record types have at least one entry
+                    let has_all_records = record_counts.iter().all(|(_, count, _)| *count > 0);
+
+                    if has_all_records {
+                        counter!(
+                            format!("{}dns_lookup_success_total", prefix),
+                            &server_labels
+                        )
+                        .increment(1);
+                    } else {
+                        counter!(
+                            format!("{}dns_lookup_failures_total", prefix),
+                            &server_labels
+                        )
+                        .increment(1);
+                    }
+
+                    // Calculate success ratio
+                    gauge!(
+                        format!("{}dns_lookup_success_ratio", prefix),
+                        &server_labels
+                    )
+                    .set(if has_all_records { 1.0 } else { 0.0 });
+
+                    // Always record the count metrics regardless of success/failure
                     for (record_type, count, hash) in record_counts {
                         let mut record_labels: Vec<(String, String)> = server_labels
                             .iter()
@@ -262,24 +278,8 @@ impl DnsCollector {
                         )
                         .set(count as f64);
                     }
-                    // Handle errors
-                    if let Some(error) = &result.error {
-                        let error_type = self.categorize_error(error);
-                        counter!(
-                            format!("{}dns_lookup_errors_total", prefix),
-                            "error_type" => error_type,
-                            "dns_server" => server_labels.last().unwrap().1.clone()
-                        )
-                        .increment(1);
-                    }
                 }
-            } else {
-                error!("Missing DNS result or node info");
-                self.record_failure("missing_data");
             }
-        } else {
-            error!("No results returned from API");
-            self.record_failure("no_results");
         }
     }
 
@@ -294,48 +294,7 @@ impl DnsCollector {
         hasher.finish()
     }
 
-    fn handle_error(&self, e: Error<PerformDnsResponse>) {
-        let error_type = if let Some(StatusCode::NOT_FOUND) = e.status() {
-            "no_nodes_found"
-        } else {
-            self.categorize_error(&e.to_string())
-        };
-
-        self.record_failure(error_type);
-
-        if let Some(StatusCode::NOT_FOUND) = e.status() {
-            warn!(?self.config.network, "No nodes were found for the given criteria");
-        } else {
-            error!("API request failed: {:#?}", e);
-        }
-    }
-
-    fn record_failure(&self, error_type: &str) {
-        counter!(
-            format!("{}dns_lookup_failures_total", self.config.prefix),
-            "error_type" => error_type.to_string()
-        )
-        .increment(1);
-
-        gauge!(
-            format!("{}dns_lookup_success_ratio", self.config.prefix),
-            "error_type" => error_type.to_string()
-        )
-        .set(0.0);
-    }
-
-    fn categorize_error(&self, error: &str) -> &'static str {
-        let error_lower = error.to_lowercase();
-        match error_lower {
-            e if e.contains("no record found") => "no_record",
-            e if e.contains("timeout") => "timeout",
-            e if e.contains("connection refused") => "connection_refused",
-            e if e.contains("servfail") => "server_failure",
-            e if e.contains("nxdomain") => "nxdomain",
-            e if e.contains("refused") => "refused",
-            _ => "other",
-        }
-    }
+    fn record_failure(&self, error_type: &str) {}
 }
 
 fn identify_dns_providers<I>(ips: I) -> HashSet<String>

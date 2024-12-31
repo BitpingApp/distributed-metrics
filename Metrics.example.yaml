@@ -1,7 +1,9 @@
+metric_clear_timeout: 1s
+
 metrics:
   - type: dns
     endpoint: jup.ag
-    frequency_ms: 1000
+    frequency: 1s
     network:
       proxy: denied
       mobile: allowed
@@ -10,7 +12,7 @@ metrics:
 
   - type: dns
     endpoint: bitping.com
-    frequency_ms: 1000
+    frequency: 1s
     network:
       proxy: denied
       mobile: allowed
@@ -18,7 +20,7 @@ metrics:
 
   - type: icmp
     endpoint: bitping.com
-    frequency_ms: 1000
+    frequency: 1s
     network:
       proxy: denied
       mobile: allowed
@@ -26,4 +28,4 @@ metrics:
 
   - type: hls
     endpoint: https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mp4/.m3u8
-    frequency_ms: 15000
+    frequency: 15s

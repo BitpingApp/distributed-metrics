@@ -1,8 +1,8 @@
 use super::Collector;
-use crate::config::MetricConfig;
+use crate::config::{HlsConfig, MetricConfig};
 use crate::types::{
-    PerformHlsBodyContinentCode, PerformHlsBodyCountryCode, PerformHlsBodyMobile,
-    PerformHlsBodyProxy, PerformHlsBodyResidential, PerformHlsResponse,
+    PerformHlsBodyConfiguration, PerformHlsBodyContinentCode, PerformHlsBodyCountryCode,
+    PerformHlsBodyMobile, PerformHlsBodyProxy, PerformHlsBodyResidential, PerformHlsResponse,
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
@@ -13,16 +13,18 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 pub struct HlsCollector {
-    config: MetricConfig,
+    config: HlsConfig,
 }
 
 impl Collector for HlsCollector {
-    fn new(config: MetricConfig) -> Self {
+    type Config = HlsConfig;
+
+    fn new(config: HlsConfig) -> Self {
         Self { config }
     }
 
     fn register_metrics(&self) {
-        let prefix = &self.config.prefix;
+        let prefix = &self.config.common_config.prefix;
 
         // Master playlist metrics
         metrics::describe_histogram!(
@@ -95,13 +97,14 @@ impl Collector for HlsCollector {
         );
     }
 
-    fn get_config(&self) -> &MetricConfig {
-        &self.config
+    fn get_frequency(&self) -> std::time::Duration {
+        self.config.common_config.frequency
     }
 
     async fn perform_request(&self) -> Result<()> {
         let country_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.country_code)
@@ -110,6 +113,7 @@ impl Collector for HlsCollector {
 
         let continent_code = self
             .config
+            .common_config
             .network
             .as_ref()
             .and_then(|x| x.continent_code.clone())
@@ -117,6 +121,7 @@ impl Collector for HlsCollector {
 
         let mobile = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.mobile.as_ref().to_uppercase())
@@ -125,6 +130,7 @@ impl Collector for HlsCollector {
 
         let residential = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.residential.as_ref().to_uppercase())
@@ -133,6 +139,7 @@ impl Collector for HlsCollector {
 
         let proxy = self
             .config
+            .common_config
             .network
             .as_ref()
             .map(|n| n.proxy.as_ref().to_uppercase())
@@ -144,12 +151,15 @@ impl Collector for HlsCollector {
         match API_CLIENT
             .perform_hls()
             .body_map(|body| {
-                body.hostnames([self.config.endpoint.clone()])
+                body.hostnames([self.config.common_config.endpoint.clone()])
                     .country_code(country_code)
                     .continent_code(continent_code)
                     .mobile(mobile)
                     .residential(residential)
                     .proxy(proxy)
+                    .configuration(PerformHlsBodyConfiguration {
+                        headers: self.config.headers.clone(),
+                    })
             })
             .send()
             .await
@@ -172,7 +182,7 @@ impl HlsCollector {
         if let Some(result) = response.results.first() {
             if let (Some(hls_result), Some(node_info)) = (result.result.clone(), response.node_info)
             {
-                let prefix = &self.config.prefix;
+                let prefix = &self.config.common_config.prefix;
                 let master = hls_result.master;
 
                 // Record master playlist metrics
@@ -292,7 +302,7 @@ impl HlsCollector {
         self.record_failure(error_type);
 
         if let Some(StatusCode::NOT_FOUND) = e.status() {
-            warn!(?self.config.network, "No nodes were found for the given criteria");
+            warn!(?self.config.common_config.network, "No nodes were found for the given criteria");
         } else {
             error!("API request failed: {:#?}", e);
         }
@@ -300,7 +310,7 @@ impl HlsCollector {
 
     fn record_failure(&self, error_type: &str) {
         counter!(
-            format!("{}hls_failures_total", self.config.prefix),
+            format!("{}hls_failures_total", self.config.common_config.prefix),
             "error_type" => error_type.to_string()
         )
         .increment(1);
