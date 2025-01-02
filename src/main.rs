@@ -27,14 +27,18 @@ async fn setup() -> Result<()> {
     }
     color_eyre::install()?;
 
-    tracing_subscriber::fmt()
+    let subscriber = tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .pretty()
         .with_thread_ids(true)
         .with_target(false)
         .with_thread_names(true)
-        .with_ansi(true)
-        .init();
+        .with_ansi(true);
+
+    if std::env::var("LOG_FMT").unwrap_or_default() == "json" {
+        subscriber.json().init();
+    } else {
+        subscriber.pretty().init();
+    }
 
     Ok(())
 }

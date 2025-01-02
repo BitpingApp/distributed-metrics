@@ -14,6 +14,8 @@ use reqwest::StatusCode;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::ops::Deref;
 use std::str::FromStr;
 use tracing::{error, info, warn};
 
@@ -132,6 +134,22 @@ impl Collector for DnsCollector {
             .and_then(|mo| PerformDnsBodyProxy::from_str(&mo).ok())
             .unwrap_or_default();
 
+        let isp = self
+            .config
+            .common_config
+            .network
+            .as_ref()
+            .map(|n| n.isp_regex.clone())
+            .unwrap_or_default();
+
+        let node_id = self
+            .config
+            .common_config
+            .network
+            .as_ref()
+            .map(|n| n.node_id.clone())
+            .unwrap_or_default();
+
         info!(?self.config.common_config, ?country_code, "Sending DNS request");
 
         match API_CLIENT
@@ -142,6 +160,8 @@ impl Collector for DnsCollector {
                     .continent_code(continent_code)
                     .mobile(mobile)
                     .residential(residential)
+                    .isp_regex(isp)
+                    .node_id(node_id)
                     .proxy(proxy)
             })
             .send()
@@ -303,35 +323,250 @@ where
     I::Item: AsRef<str>,
 {
     let mut providers = HashSet::new();
-    let provider_map: HashMap<&str, &str> = [
-        ("8.8.8.8", "Google"),
-        ("8.8.4.4", "Google"),
-        ("1.1.1.1", "Cloudflare"),
-        ("1.0.0.1", "Cloudflare"),
-        ("9.9.9.9", "Quad9"),
-        ("149.112.112.112", "Quad9"),
-        ("208.67.222.222", "OpenDNS"),
-        ("208.67.220.220", "OpenDNS"),
-        ("94.140.14.14", "AdGuard"),
-        ("94.140.15.15", "AdGuard"),
-        ("185.228.168.9", "CleanBrowsing"),
-        ("185.228.169.9", "CleanBrowsing"),
-        ("76.76.19.19", "Alternate DNS"),
-        ("76.223.122.150", "Alternate DNS"),
-        ("76.76.2.0", "Control D"),
-        ("76.76.10.0", "Control D"),
-    ]
-    .iter()
-    .cloned()
-    .collect();
+    let provider_map = build_provider_map();
 
     for ip in ips {
-        let provider = provider_map
-            .get(ip.as_ref())
-            .map(|&p| p.to_string())
-            .unwrap_or_else(|| ip.as_ref().to_string());
+        let ip_str = ip.as_ref();
+
+        let ip_addr = match IpAddr::from_str(ip_str) {
+            Ok(addr) => addr,
+            Err(_) => {
+                providers.insert("Invalid IP".to_string());
+                continue;
+            }
+        };
+
+        let provider = match ip_addr {
+            IpAddr::V4(ipv4) => {
+                if is_loopback_v4(&ipv4) {
+                    "Localhost".to_string()
+                } else if is_private_ipv4(&ipv4) {
+                    classify_private_network(&ipv4)
+                } else if is_tailscale_range(&ipv4) {
+                    "Tailscale".to_string()
+                } else if let Some(provider) = provider_map.get(ip_str) {
+                    provider.to_string()
+                } else {
+                    classify_public_dns(&ipv4)
+                }
+            }
+            IpAddr::V6(ipv6) => {
+                if is_loopback_v6(&ipv6) {
+                    "Localhost".to_string()
+                } else if is_private_ipv6(&ipv6) {
+                    classify_private_ipv6(&ipv6)
+                } else if let Some(provider) = provider_map.get(ip_str) {
+                    provider.to_string()
+                } else {
+                    classify_public_ipv6_dns(&ipv6)
+                }
+            }
+        };
+
         providers.insert(provider);
     }
 
     providers
+}
+
+fn is_loopback_v4(ip: &Ipv4Addr) -> bool {
+    ip.octets()[0] == 127
+}
+
+fn is_loopback_v6(ip: &Ipv6Addr) -> bool {
+    *ip == Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
+}
+
+fn is_private_ipv4(ip: &Ipv4Addr) -> bool {
+    let octets = ip.octets();
+    match octets[0] {
+        10 => true,
+        172 => (16..=31).contains(&octets[1]),
+        192 => octets[1] == 168,
+        169 => octets[1] == 254,
+        _ => false,
+    }
+}
+
+fn is_private_ipv6(ip: &Ipv6Addr) -> bool {
+    let segments = ip.segments();
+
+    // fc00::/7 (unique local)
+    (segments[0] & 0xfe00) == 0xfc00 ||
+    // fe80::/10 (link local)
+    (segments[0] & 0xffc0) == 0xfe80
+}
+
+fn is_tailscale_range(ip: &Ipv4Addr) -> bool {
+    let octets = ip.octets();
+    octets[0] == 100 && (64..=127).contains(&octets[1])
+}
+
+fn build_provider_map() -> HashMap<String, String> {
+    let mut map = HashMap::new();
+
+    // Google DNS
+    for ip in [
+        "8.8.8.8",
+        "8.8.4.4",
+        "2001:4860:4860::8888",
+        "2001:4860:4860::8844",
+    ]
+    .iter()
+    {
+        map.insert((*ip).to_string(), "Google".to_string());
+    }
+
+    // Cloudflare DNS
+    for ip in [
+        "1.1.1.1",
+        "1.0.0.1",
+        "1.1.1.2",
+        "1.0.0.2",
+        "2606:4700:4700::1111",
+        "2606:4700:4700::1001",
+        "2606:4700:4700::1112",
+        "2606:4700:4700::1002",
+    ]
+    .iter()
+    {
+        map.insert((*ip).to_string(), "Cloudflare".to_string());
+    }
+
+    // Quad9
+    for ip in ["9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9"].iter() {
+        map.insert((*ip).to_string(), "Quad9".to_string());
+    }
+
+    // OpenDNS
+    for ip in [
+        "208.67.222.222",
+        "208.67.220.220",
+        "2620:119:35::35",
+        "2620:119:53::53",
+    ]
+    .iter()
+    {
+        map.insert((*ip).to_string(), "OpenDNS".to_string());
+    }
+
+    // AdGuard
+    for ip in [
+        "94.140.14.14",
+        "94.140.15.15",
+        "2a10:50c0::ad1:ff",
+        "2a10:50c0::ad2:ff",
+    ]
+    .iter()
+    {
+        map.insert((*ip).to_string(), "AdGuard".to_string());
+    }
+
+    // NextDNS (including all Anycast ranges)
+    let nextdns_ranges = (0..=255)
+        .filter(|&n| {
+            matches!(
+                n,
+                0 | 1 | 11 | 42 | 68 | 99 | 139 | 165 | 185 | 216 | 233 | 241
+            )
+        })
+        .flat_map(|n| {
+            vec![
+                format!("45.90.28.{}", n),
+                format!("45.90.30.{}", n),
+                format!("2a07:a8c0::{:x}", n),
+                format!("2a07:a8c1::{:x}", n),
+            ]
+        });
+
+    for ip in nextdns_ranges {
+        map.insert(ip, "NextDNS".to_string());
+    }
+
+    map
+}
+
+fn classify_private_network(ip: &Ipv4Addr) -> String {
+    let octets = ip.octets();
+    match octets[0] {
+        10 => "Private Network (10.0.0.0/8)".to_string(),
+        172 if (16..=31).contains(&octets[1]) => "Private Network (172.16.0.0/12)".to_string(),
+        192 if octets[1] == 168 => "Home Network (192.168.0.0/16)".to_string(),
+        169 if octets[1] == 254 => "Link-local Network".to_string(),
+        _ => "Unknown Private Network".to_string(),
+    }
+}
+
+fn classify_private_ipv6(ip: &Ipv6Addr) -> String {
+    let segments = ip.segments();
+    if (segments[0] & 0xfe00) == 0xfc00 {
+        "Unique Local Address".to_string()
+    } else if (segments[0] & 0xffc0) == 0xfe80 {
+        "Link-local Network".to_string()
+    } else {
+        "Private IPv6 Network".to_string()
+    }
+}
+
+fn classify_public_dns(ip: &Ipv4Addr) -> String {
+    let octets = ip.octets();
+
+    match octets[0] {
+        // Reserved for IANA special use
+        0 | 127 | 169 | 192 | 198 => "Reserved Range".to_string(),
+
+        // Major ISP ranges
+        1..=100 => {
+            if is_known_isp_range(ip) {
+                "ISP DNS".to_string()
+            } else {
+                "Unknown Public DNS".to_string()
+            }
+        }
+
+        // Enterprise ranges
+        128..=191 => "Enterprise DNS".to_string(),
+
+        _ => "Unknown Public DNS".to_string(),
+    }
+}
+
+fn classify_public_ipv6_dns(ip: &Ipv6Addr) -> String {
+    let segments = ip.segments();
+
+    match segments[0] {
+        // Global Unicast Address (2000::/3)
+        s if (0x2000..=0x3FFF).contains(&s) => {
+            if is_known_ipv6_dns_range(ip) {
+                "Known IPv6 DNS Provider".to_string()
+            } else {
+                "ISP IPv6 DNS".to_string()
+            }
+        }
+
+        _ => "Unknown IPv6 DNS".to_string(),
+    }
+}
+
+fn is_known_isp_range(ip: &Ipv4Addr) -> bool {
+    let octets = ip.octets();
+
+    matches!(
+        (octets[0], octets[1]),
+        (24..=50, _) |    // ARIN space
+        (62..=70, _) |    // RIPE space
+        (80..=90, _) |    // RIPE space
+        (98..=100, _) // APNIC space
+    )
+}
+
+fn is_known_ipv6_dns_range(ip: &Ipv6Addr) -> bool {
+    let segments = ip.segments();
+
+    matches!(
+        segments[0],
+        0x2001 |  // Teredo
+        0x2606 |  // Various providers
+        0x2620 // Various providers
+    )
 }

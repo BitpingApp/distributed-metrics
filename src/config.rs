@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
-use serde::Deserialize;
+use regress::Regex;
+use serde::{Deserialize, Deserializer};
 
 use eyre::{Context, Result};
 use figment::{
@@ -92,11 +93,16 @@ pub enum ContinentCode {
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct NetworkCriteria {
+    #[serde(default)]
     pub proxy: Policy,
+    #[serde(default)]
     pub mobile: Policy,
+    #[serde(default)]
     pub residential: Policy,
     pub country_code: Option<keshvar::Alpha3>,
     pub continent_code: Option<ContinentCode>,
+    pub isp_regex: Option<String>,
+    pub node_id: Option<String>,
 }
 
 impl Conf {

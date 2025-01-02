@@ -1,6 +1,6 @@
 [package]
 name = "distributed-metrics"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 repository = "https://github.com/BitpingApp/distributed-metrics"
 homepage = "https://bitping.com"
@@ -8,7 +8,7 @@ authors = ["Firaenix <Nick.Carton@gmail.com>"]
 description = "A monitoring tool backed by Bitping's distributed network, exposed as a Prometheus metrics endpoint"
 
 [dependencies]
-progenitor = { version = "0.8.0", features = [] }
+progenitor = { version = "0.9.0", features = [] }
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "stream",
@@ -29,14 +29,15 @@ strum = { version = "0.26", features = ["derive"] }
 figment = { version = "0.10", features = ["toml", "yaml", "env"] }
 color-eyre = "0.6"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-regress = "0.10.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+regress = { version = "0.10.1", features = [] }
 metrics = "0.24.1"
 metrics-exporter-prometheus = "0.16.0"
 metrics-dashboard = "0.3.3"
 poem = { version = "3.1.5", features = ["rustls"] }
 metrics-util = "0.18.0"
 humantime-serde = "1.1.1"
+serde_regex = "1.1.0"
 
 # The profile that 'dist' will build with
 [profile.dist]
