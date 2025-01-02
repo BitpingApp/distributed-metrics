@@ -196,7 +196,7 @@ impl DnsCollector {
                     ("continent", node_info.continent_code.clone()),
                     ("city", node_info.city.clone()),
                     ("isp", node_info.isp.clone()),
-                    // ("os", node_info.operating_system.clone()),
+                    ("os", node_info.operating_system.clone()),
                     // ("residential", node_info.residential.to_string()),
                     // ("proxy", node_info.proxy.to_string()),
                     // ("mobile", node_info.mobile.to_string()),
