@@ -1,4 +1,4 @@
-use super::Collector;
+use super::{Collector, CollectorErrors};
 use crate::config::{HlsConfig, MetricConfig};
 use crate::types::{
     PerformHlsBodyConfiguration, PerformHlsBodyContinentCode, PerformHlsBodyCountryCode,
@@ -18,6 +18,7 @@ pub struct HlsCollector {
 
 impl Collector for HlsCollector {
     type Config = HlsConfig;
+    type Response = PerformHlsResponse;
 
     fn new(config: HlsConfig) -> Self {
         Self { config }
@@ -101,7 +102,7 @@ impl Collector for HlsCollector {
         self.config.common_config.frequency
     }
 
-    async fn perform_request(&self) -> Result<()> {
+    async fn perform_request(&self) -> Result<Self::Response> {
         let country_code = self
             .config
             .common_config
@@ -148,7 +149,7 @@ impl Collector for HlsCollector {
 
         info!(?self.config, ?country_code, "Sending DNS request");
 
-        match API_CLIENT
+        let response = API_CLIENT
             .perform_hls()
             .body_map(|body| {
                 body.hostnames([self.config.common_config.endpoint.clone()])
@@ -162,23 +163,12 @@ impl Collector for HlsCollector {
                     })
             })
             .send()
-            .await
-        {
-            Ok(response) => {
-                let response = response.into_inner();
-                self.handle_response(response);
-                Ok(())
-            }
-            Err(e) => {
-                self.handle_error(e);
-                Ok(())
-            }
-        }
-    }
-}
+            .await?;
 
-impl HlsCollector {
-    fn handle_response(&self, response: PerformHlsResponse) {
+        Ok(response.into_inner())
+    }
+
+    fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorErrors> {
         if let Some(result) = response.results.first() {
             if let (Some(hls_result), Some(node_info)) = (result.result.clone(), response.node_info)
             {
@@ -290,8 +280,12 @@ impl HlsCollector {
             error!("No results returned from API");
             self.record_failure("no_results");
         }
-    }
 
+        Ok(())
+    }
+}
+
+impl HlsCollector {
     fn handle_error(&self, e: Error<PerformHlsResponse>) {
         let error_type = if let Some(StatusCode::NOT_FOUND) = e.status() {
             "no_nodes_found"

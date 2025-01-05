@@ -52,6 +52,20 @@ pub struct HlsConfig {
 pub struct DnsConfig {
     #[serde(flatten)]
     pub common_config: MetricConfig,
+    #[serde(default)]
+    pub lookup_type: LookupTypes,
+}
+
+#[derive(Deserialize, AsRefStr, Clone, Debug, Default)]
+pub enum LookupTypes {
+    #[default]
+    IP,
+    MX,
+    SOA,
+    NS,
+    TXT,
+    SRV,
+    TLSA,
 }
 
 #[derive(Deserialize, Clone, Debug)]

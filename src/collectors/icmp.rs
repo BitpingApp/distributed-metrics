@@ -1,4 +1,4 @@
-use super::Collector;
+use super::{Collector, CollectorErrors};
 use crate::config::{IcmpConfig, MetricConfig};
 use crate::types::{
     PerformIcmpBodyContinentCode, PerformIcmpBodyCountryCode, PerformIcmpBodyMobile,
@@ -18,6 +18,7 @@ pub struct IcmpCollector {
 
 impl Collector for IcmpCollector {
     type Config = IcmpConfig;
+    type Response = PerformIcmpResponse;
 
     fn new(config: IcmpConfig) -> Self {
         Self { config }
@@ -85,7 +86,7 @@ impl Collector for IcmpCollector {
         );
     }
 
-    async fn perform_request(&self) -> Result<()> {
+    async fn perform_request(&self) -> Result<Self::Response> {
         let country_code = self
             .config
             .common_config
@@ -132,7 +133,7 @@ impl Collector for IcmpCollector {
 
         info!(?self.config.common_config, ?country_code, "Sending ICMP request");
 
-        match API_CLIENT
+        let response = API_CLIENT
             .perform_icmp()
             .body_map(|body| {
                 body.hostnames([self.config.common_config.endpoint.clone()])
@@ -143,27 +144,16 @@ impl Collector for IcmpCollector {
                     .proxy(proxy)
             })
             .send()
-            .await
-        {
-            Ok(response) => {
-                let response = response.into_inner();
-                self.handle_response(response);
-                Ok(())
-            }
-            Err(e) => {
-                self.handle_error(e);
-                Ok(())
-            }
-        }
+            .await?;
+
+        Ok(response.into_inner())
     }
 
     fn get_frequency(&self) -> std::time::Duration {
         self.config.common_config.frequency
     }
-}
 
-impl IcmpCollector {
-    fn handle_response(&self, response: PerformIcmpResponse) {
+    fn handle_response(&self, response: PerformIcmpResponse) -> Result<(), CollectorErrors> {
         if let Some(result) = response.results.first() {
             if let (Some(icmp_result), Some(node_info)) =
                 (result.result.clone(), response.node_info)
@@ -225,8 +215,12 @@ impl IcmpCollector {
             error!("No results returned from API");
             self.record_failure("no_results");
         }
-    }
 
+        Ok(())
+    }
+}
+
+impl IcmpCollector {
     fn handle_error(&self, e: Error<PerformIcmpResponse>) {
         let error_type = if let Some(StatusCode::NOT_FOUND) = e.status() {
             "no_nodes_found"

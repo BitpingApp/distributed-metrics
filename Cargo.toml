@@ -1,6 +1,6 @@
 [package]
 name = "distributed-metrics"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2021"
 repository = "https://github.com/BitpingApp/distributed-metrics"
 homepage = "https://bitping.com"
@@ -38,6 +38,7 @@ poem = { version = "3.1.5", features = ["rustls"] }
 metrics-util = "0.18.0"
 humantime-serde = "1.1.1"
 serde_regex = "1.1.0"
+thiserror = "2.0.9"
 
 # The profile that 'dist' will build with
 [profile.dist]
