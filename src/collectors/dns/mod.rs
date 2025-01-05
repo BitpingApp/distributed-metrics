@@ -54,33 +54,13 @@ impl Collector for DnsCollector {
         );
 
         metrics::describe_gauge!(
-            format!("{}dns_ip_records_count", prefix),
-            "Number of IP address records (A/AAAA) in DNS response"
+            format!("{}dns_record_hash", prefix),
+            "Records the hash of the response the node saw"
         );
 
         metrics::describe_gauge!(
-            format!("{}dns_mx_records_count", prefix),
-            "Number of mail exchanger (MX) records in DNS response"
-        );
-
-        metrics::describe_gauge!(
-            format!("{}dns_txt_records_count", prefix),
-            "Number of text (TXT) records in DNS response"
-        );
-
-        metrics::describe_gauge!(
-            format!("{}dns_ns_records_count", prefix),
-            "Number of nameserver (NS) records in DNS response"
-        );
-
-        metrics::describe_gauge!(
-            format!("{}dns_srv_records_count", prefix),
-            "Number of service (SRV) records in DNS response"
-        );
-
-        metrics::describe_gauge!(
-            format!("{}dns_tlsa_records_count", prefix),
-            "Number of TLSA records in DNS response"
+            format!("{}dns_records_count", prefix),
+            "Number of records in DNS response"
         );
 
         metrics::describe_gauge!(
@@ -185,7 +165,9 @@ impl Collector for DnsCollector {
         info!("Mapping response");
         if let Some(result) = response.results.first() {
             let prefix = &self.config.common_config.prefix;
-            let node_info = response.node_info.unwrap();
+            let node_info = response.node_info.ok_or_else(|| {
+                CollectorErrors::Measure(result.endpoint.clone(), "Unable to get node info")
+            })?;
 
             // Core labels - essential dimensions only
             let common_labels = [
@@ -210,15 +192,6 @@ impl Collector for DnsCollector {
                 for server in dns_providers {
                     let mut server_labels = common_labels.to_vec();
                     server_labels.push(("dns_server", server));
-
-                    counter!(format!("{}dns_lookup_total", prefix), &server_labels).increment(1);
-
-                    // Core metrics
-                    histogram!(
-                        format!("{}dns_server_lookup_duration_ms", prefix),
-                        &server_labels
-                    )
-                    .record(result.duration.unwrap_or(0.0));
 
                     // Only record counts for the configured lookup type
                     let record_count = match self.config.lookup_type {
@@ -258,7 +231,20 @@ impl Collector for DnsCollector {
                             Self::hash_records(&dns_result.soa[..]),
                         ),
                     };
+
                     let (record_type, count, hash) = record_count;
+                    server_labels.push(("record_type", record_type.into()));
+
+                    counter!(format!("{}dns_lookup_total", prefix), &server_labels).increment(1);
+
+                    // Core metrics
+                    histogram!(
+                        format!("{}dns_server_lookup_duration_ms", prefix),
+                        &server_labels
+                    )
+                    .record(result.duration.unwrap_or(0.0));
+
+                    gauge!(format!("{}dns_record_hash", prefix), &server_labels).set(hash as f64);
 
                     // Record success/failure based on whether we got any records
                     if count > 0 {
@@ -275,18 +261,8 @@ impl Collector for DnsCollector {
                         .increment(1);
                     }
 
-                    // Record the count metric for the configured lookup type
-                    let mut record_labels: Vec<(String, String)> = server_labels
-                        .iter()
-                        .map(|(k, v)| (k.to_string(), v.to_string()))
-                        .collect();
-                    record_labels.push((format!("{record_type}_record_hash"), hash.to_string()));
-
-                    gauge!(
-                        format!("{}dns_{}_records_count", prefix, record_type),
-                        &record_labels
-                    )
-                    .set(count as f64);
+                    gauge!(format!("{}dns_records_count", prefix), &server_labels)
+                        .set(count as f64);
                 }
             } else {
                 counter!(format!("{}dns_lookup_total", prefix), &common_labels).increment(1);
@@ -317,10 +293,6 @@ impl DnsCollector {
         normalized.hash(&mut hasher);
         hasher.finish()
     }
-
-    fn record_failure(&self, error_type: &str) {
-        error!(?error_type, "What even happened");
-    }
 }
 
 fn identify_dns_providers<I>(ips: I) -> HashSet<String>
@@ -336,8 +308,9 @@ where
 
         let ip_addr = match IpAddr::from_str(ip_str) {
             Ok(addr) => addr,
-            Err(_) => {
-                providers.insert("Invalid IP".to_string());
+            Err(e) => {
+                warn!(?e, ?ip_str, "Got an invalid IP Address for DNS Provider");
+                // providers.insert("Invalid IP".to_string());
                 continue;
             }
         };

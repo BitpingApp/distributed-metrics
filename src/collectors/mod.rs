@@ -11,7 +11,7 @@ pub mod icmp;
 #[derive(Error, Debug)]
 pub enum CollectorErrors {
     #[error("Failed to handle measurement for {0}: {1}")]
-    Measure(String, String),
+    Measure(String, &'static str),
 }
 
 pub trait Collector {
@@ -26,13 +26,18 @@ pub trait Collector {
     fn get_frequency(&self) -> Duration;
 
     fn handle_response(&self, response: Self::Response) -> Result<(), CollectorErrors>;
+    fn handle_errors(&self, error: CollectorErrors) {
+        tracing::error!(?error, "Failed to handle error");
+    }
 
     async fn run(&self) -> eyre::Result<()> {
         self.register_metrics();
 
         loop {
             let response = self.perform_request().await?;
-            self.handle_response(response)?;
+            if let Err(e) = self.handle_response(response) {
+                self.handle_errors(e);
+            }
 
             tokio::time::sleep(self.get_frequency()).await;
         }
