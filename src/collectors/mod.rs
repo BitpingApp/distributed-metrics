@@ -52,23 +52,30 @@ pub trait Collector {
     async fn run(&self) -> Result<()> {
         self.register_metrics();
 
-        let result = self.perform_request().await;
+        loop {
+            let request_future = self.perform_request();
+            let timeout_duration = Duration::from_secs(60);
 
-        match result {
-            Ok(response) => {
-                if let Err(e) = self.handle_response(response) {
-                    self.handle_errors(e)?;
+            match tokio::time::timeout(timeout_duration, request_future).await {
+                Ok(result) => match result {
+                    Ok(response) => {
+                        if let Err(e) = self.handle_response(response) {
+                            self.handle_errors(e)?;
+                        }
+                    }
+                    Err(e) => {
+                        self.handle_errors(CollectorErrors::Measurement {
+                            metric: "unknown".to_string(),
+                            reason: e.to_string(),
+                        })?;
+                    }
+                },
+                Err(_) => {
+                    self.handle_errors(CollectorErrors::Timeout(timeout_duration))?;
                 }
             }
-            Err(e) => {
-                self.handle_errors(CollectorErrors::Measurement {
-                    metric: "unknown".to_string(),
-                    reason: e.to_string(),
-                })?;
-            }
-        }
 
-        tokio::time::sleep(self.get_frequency()).await;
-        Ok(())
+            tokio::time::sleep(self.get_frequency()).await;
+        }
     }
 }
