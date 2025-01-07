@@ -35,7 +35,7 @@ metrics = "0.24.1"
 metrics-exporter-prometheus = "0.16.0"
 metrics-dashboard = "0.3.3"
 poem = { version = "3.1.5", features = ["rustls"] }
-metrics-util = "0.18.0"
+metrics-util = "0.19.0"
 humantime-serde = "1.1.1"
 serde_regex = "1.1.0"
 thiserror = "2.0.9"
