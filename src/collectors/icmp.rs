@@ -13,14 +13,14 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 pub struct IcmpCollector {
-    config: IcmpConfig,
+    config: &'static IcmpConfig,
 }
 
 impl Collector for IcmpCollector {
     type Config = IcmpConfig;
     type Response = PerformIcmpResponse;
 
-    fn new(config: IcmpConfig) -> Self {
+    fn new(config: &'static IcmpConfig) -> Self {
         Self { config }
     }
 

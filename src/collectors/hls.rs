@@ -13,14 +13,14 @@ use std::str::FromStr;
 use tracing::{error, info, warn};
 
 pub struct HlsCollector {
-    config: HlsConfig,
+    config: &'static HlsConfig,
 }
 
 impl Collector for HlsCollector {
     type Config = HlsConfig;
     type Response = PerformHlsResponse;
 
-    fn new(config: HlsConfig) -> Self {
+    fn new(config: &'static HlsConfig) -> Self {
         Self { config }
     }
 
@@ -147,7 +147,7 @@ impl Collector for HlsCollector {
             .and_then(|mo| PerformHlsBodyProxy::from_str(&mo).ok())
             .unwrap_or_default();
 
-        info!(?self.config, ?country_code, "Sending DNS request");
+        info!(?self.config, ?country_code, "Sending HLS request");
 
         let response = API_CLIENT
             .perform_hls()

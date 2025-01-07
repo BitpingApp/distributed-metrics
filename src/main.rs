@@ -13,7 +13,7 @@ use progenitor::generate_api;
 use std::sync::LazyLock;
 use std::time::Duration;
 use tokio::join;
-use tokio::task::LocalSet;
+use tokio::task::{JoinSet, LocalSet};
 use tracing::{error, info};
 
 mod collectors;
@@ -58,6 +58,9 @@ static API_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::new_with_client("https://api.bitping.com/v2", req_client)
 });
 
+static CONFIG: LazyLock<Conf> =
+    LazyLock::new(|| Conf::new().expect("Failed to load configuration"));
+
 #[handler]
 fn render_prom(state: Data<&PrometheusHandle>) -> String {
     state.render()
@@ -68,14 +71,13 @@ async fn main() -> Result<()> {
     setup().await?;
 
     info!("Starting DNS metrics collector");
-    let config = Conf::new().context("Failed to load configuration")?;
 
     let handle = PrometheusBuilder::new()
         .idle_timeout(
             MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM | MetricKindMask::GAUGE,
-            Some(config.global_config.metric_clear_timeout),
+            Some(CONFIG.global_config.metric_clear_timeout),
         )
-        .upkeep_timeout(config.global_config.metric_clear_timeout.saturating_mul(2))
+        .upkeep_timeout(CONFIG.global_config.metric_clear_timeout.saturating_mul(2))
         .install_recorder()
         .expect("failed to install recorder");
 
@@ -86,40 +88,47 @@ async fn main() -> Result<()> {
     let http_server = Server::new(TcpListener::bind("[::]:3000")).run(app);
 
     // Start collection tasks
-    let local_set = LocalSet::new();
+    let mut join_set = JoinSet::new();
 
-    spawn_collectors(config, &local_set).await?;
+    spawn_collectors(&CONFIG, &mut join_set).await?;
 
-    let (rs, _) = join!(http_server, local_set);
+    let (rs, _) = join!(http_server, join_set.join_all());
+
     rs?;
 
     Ok(())
 }
 
-async fn spawn_collectors(config: Conf, local_set: &LocalSet) -> Result<()> {
-    for metric in config.metrics {
+async fn spawn_collectors(config: &'static Conf, join_set: &mut JoinSet<()>) -> Result<()> {
+    for metric in &config.metrics {
         match metric {
             MetricType::Dns(config) => {
-                local_set.spawn_local(async move {
-                    let collector = dns::DnsCollector::new(config);
-                    if let Err(e) = collector.run().await {
-                        error!("DNS collector failed: {}", e);
+                join_set.spawn(async move {
+                    loop {
+                        let collector = dns::DnsCollector::new(config);
+                        if let Err(e) = collector.run().await {
+                            error!("DNS collector failed: {}", e);
+                        }
                     }
                 });
             }
             MetricType::Icmp(config) => {
-                local_set.spawn_local(async move {
-                    let collector = IcmpCollector::new(config);
-                    if let Err(e) = collector.run().await {
-                        error!("ICMP collector failed: {}", e);
+                join_set.spawn(async move {
+                    loop {
+                        let collector = IcmpCollector::new(config);
+                        if let Err(e) = collector.run().await {
+                            error!("ICMP collector failed: {}", e);
+                        }
                     }
                 });
             }
             MetricType::Hls(config) => {
-                local_set.spawn_local(async move {
-                    let collector = hls::HlsCollector::new(config);
-                    if let Err(e) = collector.run().await {
-                        error!("ICMP collector failed: {}", e);
+                join_set.spawn(async move {
+                    loop {
+                        let collector = hls::HlsCollector::new(config);
+                        if let Err(e) = collector.run().await {
+                            error!("HLS collector failed: {}", e);
+                        }
                     }
                 });
             }

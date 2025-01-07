@@ -22,14 +22,14 @@ use std::str::FromStr;
 use tracing::{error, info, instrument, warn};
 
 pub struct DnsCollector {
-    config: DnsConfig,
+    config: &'static DnsConfig,
 }
 
 impl Collector for DnsCollector {
     type Config = DnsConfig;
     type Response = PerformDnsResponse;
 
-    fn new(config: DnsConfig) -> Self {
+    fn new(config: &'static DnsConfig) -> Self {
         Self { config }
     }
 
@@ -162,12 +162,11 @@ impl Collector for DnsCollector {
     }
 
     fn handle_response(&self, response: PerformDnsResponse) -> Result<(), CollectorErrors> {
-        info!("Mapping response");
         if let Some(result) = response.results.first() {
             let prefix = &self.config.common_config.prefix;
-            let node_info = response.node_info.ok_or_else(|| {
-                CollectorErrors::Measure(result.endpoint.clone(), "Unable to get node info")
-            })?;
+            let node_info = response
+                .node_info
+                .ok_or_else(|| CollectorErrors::NodeInfo(result.endpoint.clone()))?;
 
             // Core labels - essential dimensions only
             let common_labels = [
