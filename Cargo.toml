@@ -1,6 +1,6 @@
 [package]
 name = "distributed-metrics"
-version = "1.0.9"
+version = "1.0.10"
 edition = "2021"
 repository = "https://github.com/BitpingApp/distributed-metrics"
 homepage = "https://bitping.com"
