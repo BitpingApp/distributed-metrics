@@ -179,10 +179,7 @@ impl Collector for HlsCollector {
                     })
             })
             .send()
-            .await
-            .inspect_err(|e| {
-                self.handle_error(e);
-            })?;
+            .await?;
 
         Ok(response.into_inner())
     }
@@ -222,12 +219,12 @@ impl Collector for HlsCollector {
 
                     Ok(())
                 } else {
-                    self.record_failure("missing_result");
+                    self.record_failure(&labels);
                     Err(CollectorErrors::MissingData(endpoint, "hls_result"))
                 }
             }
             _ => {
-                self.record_failure("missing_data");
+                self.record_failure(&labels);
                 Err(CollectorErrors::MissingData(endpoint, "hls"))
             }
         }
@@ -460,29 +457,10 @@ impl HlsCollector {
         Ok(())
     }
 
-
-
-    fn handle_error(&self, error: &Error<PerformHlsResponse>) {
-        let error_type = match error.status() {
-            Some(StatusCode::NOT_FOUND) => {
-                warn!(?self.config.common_config.network, "No nodes found for criteria");
-                "no_nodes_found"
-            }
-            Some(StatusCode::UNAUTHORIZED) => "unauthorized",
-            Some(StatusCode::TOO_MANY_REQUESTS) => "rate_limited",
-            _ => {
-                error!("API request failed: {:#?}", error);
-                "api_error"
-            }
-        };
-
-        self.record_failure(error_type);
-    }
-
-    fn record_failure(&self, error_type: &str) {
+    fn record_failure(&self,labels: &[(&'static str, String)]) {
         counter!(
             format!("{}hls_failures_total", self.config.common_config.prefix),
-            "error_type" => error_type.to_string()
+            labels
         )
         .increment(1);
     }
