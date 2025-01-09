@@ -37,14 +37,14 @@ impl Collector for HlsCollector {
         let prefix = &self.config.common_config.prefix;
 
         metrics::describe_histogram!(
-            format!("{}hls_total_duration", prefix),
+            format!("{}hls_total_ms", prefix),
             "Total time taken to perform HLS test"
         );
 
 
         // Master playlist metrics
         metrics::describe_histogram!(
-            format!("{}hls_master_download_duration", prefix),
+            format!("{}hls_master_download_ms", prefix),
             "Time taken to download master playlist"
         );
         metrics::describe_gauge!(
@@ -61,27 +61,27 @@ impl Collector for HlsCollector {
         );
         // Master Connection metrics
         metrics::describe_histogram!(
-            format!("{}hls_master_tcp_connect_duration", prefix),
+            format!("{}hls_master_tcp_connect_ms", prefix),
             "Master Manifest TCP connection establishment time"
         );
         metrics::describe_histogram!(
-            format!("{}hls_master_http_get_send_duration", prefix),
+            format!("{}hls_master_http_get_send_ms", prefix),
             "Master Manifest HTTP GET request send duration"
         );
 
-        metrics::describe_histogram!(format!("{}hls_master_ttfb_duration", prefix), "Master Manifest Time to first byte");
+        metrics::describe_histogram!(format!("{}hls_master_ttfb_ms", prefix), "Master Manifest Time to first byte");
         metrics::describe_histogram!(
-            format!("{}hls_master_dns_resolve_duration", prefix),
+            format!("{}hls_master_dns_resolve_ms", prefix),
             "Master Manifest DNS resolution time"
         );
         metrics::describe_histogram!(
-            format!("{}hls_master_tls_handshake_duration", prefix),
+            format!("{}hls_master_tls_handshake_ms", prefix),
             "Master Manifest TLS handshake duration"
         );
 
         // Fragment metrics
         metrics::describe_histogram!(
-            format!("{}hls_fragment_download_duration", prefix),
+            format!("{}hls_fragment_download_ms", prefix),
             "Fragment download time"
         );
         metrics::describe_gauge!(
@@ -108,12 +108,12 @@ impl Collector for HlsCollector {
         );
 
         metrics::describe_gauge!(
-            format!("{}hls_estimated_buffer_duration", prefix),
+            format!("{}hls_estimated_buffer_ms", prefix),
             "Estimated buffer length in milliseconds based on download speeds"
         );
 
         metrics::describe_histogram!(
-            format!("{}hls_initial_buffer_duration", prefix),
+            format!("{}hls_initial_buffer_ms", prefix),
             "Time taken to load initial buffer including master playlist, variant playlist, and first segment"
         );
 
@@ -207,7 +207,7 @@ impl Collector for HlsCollector {
         match response.results.first() {
             Some(result) => {
                 if let Some(hls_result) = &result.result {
-                    histogram!(format!("{}hls_total_duration", self.config.common_config.prefix), &labels).record(result.duration.unwrap_or_default());
+                    histogram!(format!("{}hls_total_ms", self.config.common_config.prefix), &labels).record(result.duration.unwrap_or_default());
 
                     if let Some(master) = &hls_result.master {
                         self.record_master_metrics(&labels, master)?;
@@ -244,23 +244,23 @@ impl HlsCollector {
 
         // Master Manifest TTFB Metrics
         if let Some(metrics) = &master.metrics {
-            histogram!(format!("{}hls_master_tcp_connect_duration", prefix), labels)
+            histogram!(format!("{}hls_master_tcp_connect_ms", prefix), labels)
             .record(metrics.tcp_connect_duration_ms);
 
-            histogram!(format!("{}hls_master_ttfb_duration", prefix), labels)
+            histogram!(format!("{}hls_master_ttfb_ms", prefix), labels)
                 .record(metrics.http_ttfb_duration_ms);
 
-            histogram!(format!("{}hls_master_dns_resolve_duration", prefix), labels)
+            histogram!(format!("{}hls_master_dns_resolve_ms", prefix), labels)
                 .record(metrics.dns_resolve_duration_ms.unwrap_or_default());
 
-            histogram!(format!("{}hls_master_tls_handshake_duration", prefix), labels)
+            histogram!(format!("{}hls_master_tls_handshake_ms", prefix), labels)
                 .record(metrics.tls_handshake_duration_ms.unwrap_or_default());
         }
         
         if let Some(download_metrics) = &master.download_metrics {
             gauge!(format!("{}hls_master_size_bytes", prefix), labels).set(download_metrics.size);
 
-            histogram!(format!("{}hls_master_download_duration", prefix), labels)
+            histogram!(format!("{}hls_master_download_ms", prefix), labels)
                 .record(download_metrics.time_ms);
 
             gauge!(format!("{}hls_master_bitrate", prefix), labels).set(download_metrics.bytes_per_second * 8.0);
@@ -299,7 +299,7 @@ impl HlsCollector {
         
 
             if let Some(metrics) = &fragment.download_metrics {
-                histogram!(format!("{}hls_fragment_download_duration", prefix), labels)
+                histogram!(format!("{}hls_fragment_download_ms", prefix), labels)
                     .record(metrics.time_ms);
 
                 gauge!(format!("{}hls_fragment_size_bytes", prefix), labels).set(metrics.size);
@@ -312,16 +312,16 @@ impl HlsCollector {
             }
 
             if let Some(metrics) = &fragment.metrics {
-                histogram!(format!("{}hls_fragment_tcp_connect_duration", prefix), labels)
+                histogram!(format!("{}hls_fragment_tcp_connect_ms", prefix), labels)
                 .record(metrics.tcp_connect_duration_ms);
 
-                histogram!(format!("{}hls_fragment_ttfb_duration", prefix), labels)
+                histogram!(format!("{}hls_fragment_ttfb_ms", prefix), labels)
                     .record(metrics.http_ttfb_duration_ms);
 
-                histogram!(format!("{}hls_fragment_dns_resolve_duration", prefix), labels)
+                histogram!(format!("{}hls_fragment_dns_resolve_ms", prefix), labels)
                     .record(metrics.dns_resolve_duration_ms.unwrap_or_default());
 
-                histogram!(format!("{}hls_fragment_tls_handshake_duration", prefix), labels)
+                histogram!(format!("{}hls_fragment_tls_handshake_ms", prefix), labels)
                     .record(metrics.tls_handshake_duration_ms.unwrap_or_default());
             }
 
@@ -398,7 +398,7 @@ impl HlsCollector {
             // Record initial buffer duration safely
             if initial_buffer_duration >= 0.0 {
                 histogram!(
-                    format!("{}hls_initial_buffer_duration", prefix),
+                    format!("{}hls_initial_buffer_ms", prefix),
                     labels
                 ).record(initial_buffer_duration);
             } else {
@@ -428,14 +428,14 @@ impl HlsCollector {
                 
                 if estimated_buffer.is_finite() && estimated_buffer >= 0.0 {
                     gauge!(
-                        format!("{}hls_estimated_buffer_duration", prefix),
+                        format!("{}hls_estimated_buffer_ms", prefix),
                         labels
                     ).set(estimated_buffer);
                 } else {
                     warn!("Invalid estimated buffer duration: {}", estimated_buffer);
                     counter!(
                         format!("{}hls_buffer_calculation_errors", prefix),
-                        "error_type" => "invalid_buffer_duration"
+                        "error_type" => "invalid_buffer_ms"
                     ).increment(1);
                 }
             } else {
