@@ -122,6 +122,7 @@ impl Collector for HlsCollector {
             "Time taken to load master and variant playlists"
         );
 
+
         // Error metrics
         metrics::describe_counter!(
             format!("{}hls_failures_total", prefix),
@@ -326,21 +327,27 @@ impl HlsCollector {
 
             gauge!(format!("{}hls_fragment_duration_seconds", prefix), labels)
                 .set(fragment.content_fragment_duration_secs);
+
         }
+
+        self.calculate_buffer_metrics(labels, master, rendition)?;
+
 
         Ok(())
     }
 
+    
     fn calculate_buffer_metrics(
         &self,
         labels: &[(&'static str, String)],
-        master: &PerformHlsResponseResultsItemResultMaster,
+        master: Option<&PerformHlsResponseResultsItemResultMaster>,
         rendition: &PerformHlsResponseResultsItemResultRendition,
     ) -> Result<(), CollectorErrors> {
         let prefix = &self.config.common_config.prefix;
 
         // Safely calculate playlist chain load time
-        let master_load_time = master.metrics.as_ref()
+        let master_load_time = master
+            .and_then(|m| m.metrics.as_ref())
             .map(|m| {
                 m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
                 m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
@@ -417,7 +424,7 @@ impl HlsCollector {
             first_fragment.download_ratio > 1.0 && 
             first_fragment.content_fragment_duration_secs > 0.0 {
                 let estimated_buffer = (first_fragment.download_ratio - 1.0) * 
-                                        first_fragment.content_fragment_duration_secs as f64 * 1000.0;
+                                        first_fragment.content_fragment_duration_secs * 1000.0;
                 
                 if estimated_buffer.is_finite() && estimated_buffer >= 0.0 {
                     gauge!(
@@ -452,6 +459,7 @@ impl HlsCollector {
 
         Ok(())
     }
+
 
 
     fn handle_error(&self, error: &Error<PerformHlsResponse>) {
