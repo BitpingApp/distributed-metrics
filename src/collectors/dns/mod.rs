@@ -166,7 +166,7 @@ impl Collector for DnsCollector {
             let prefix = &self.config.common_config.prefix;
             let node_info = response
                 .node_info
-                .ok_or_else(|| CollectorErrors::NodeInfo(result.endpoint.clone()))?;
+                .ok_or_else(|| CollectorErrors::MissingNodeInfo(result.endpoint.clone()))?;
 
             // Core labels - essential dimensions only
             let common_labels = [

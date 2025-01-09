@@ -1,19 +1,28 @@
 use super::{Collector, CollectorErrors};
 use crate::config::{HlsConfig, MetricConfig};
-use crate::types::{
-    PerformHlsBodyConfiguration, PerformHlsBodyContinentCode, PerformHlsBodyCountryCode,
-    PerformHlsBodyMobile, PerformHlsBodyProxy, PerformHlsBodyResidential, PerformHlsResponse,
-};
+use crate::types::*;
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
 use metrics::{counter, gauge, histogram};
 use progenitor::progenitor_client::Error;
 use reqwest::StatusCode;
-use std::str::FromStr;
-use tracing::{error, info, warn};
+use std::{collections::HashMap, str::FromStr};
+use tracing::{debug, error, info, warn};
 
 pub struct HlsCollector {
     config: &'static HlsConfig,
+}
+
+type NodeInfo = PerformHlsResponseNodeInfo;
+type HlsMaster = PerformHlsResponseResultsItemResultMaster;
+
+#[derive(Debug)]
+struct MetricLabels {
+    country_code: String,
+    continent: String,
+    city: String,
+    isp: String,
+    endpoint: String,
 }
 
 impl Collector for HlsCollector {
@@ -27,74 +36,100 @@ impl Collector for HlsCollector {
     fn register_metrics(&self) {
         let prefix = &self.config.common_config.prefix;
 
-        // Master playlist metrics
         metrics::describe_histogram!(
-            format!("{}hls_master_download_duration_seconds", prefix),
-            "Time taken to download master playlist"
+            format!("{}hls_total_duration", prefix),
+            "Total time taken to perform HLS test"
         );
 
+
+        // Master playlist metrics
+        metrics::describe_histogram!(
+            format!("{}hls_master_download_duration", prefix),
+            "Time taken to download master playlist"
+        );
         metrics::describe_gauge!(
             format!("{}hls_master_size_bytes", prefix),
             "Size of master playlist in bytes"
         );
-
         metrics::describe_gauge!(
             format!("{}hls_renditions_count", prefix),
             "Number of available renditions"
         );
-
-        // Connection metrics
+        metrics::describe_gauge!(
+            format!("{}hls_master_bitrate", prefix),
+            "Master playlist download bits per second"
+        );
+        // Master Connection metrics
         metrics::describe_histogram!(
-            format!("{}hls_tcp_connect_duration_seconds", prefix),
-            "TCP connection establishment time"
+            format!("{}hls_master_tcp_connect_duration", prefix),
+            "Master Manifest TCP connection establishment time"
+        );
+        metrics::describe_histogram!(
+            format!("{}hls_master_http_get_send_duration", prefix),
+            "Master Manifest HTTP GET request send duration"
         );
 
+        metrics::describe_histogram!(format!("{}hls_master_ttfb_duration", prefix), "Master Manifest Time to first byte");
         metrics::describe_histogram!(
-            format!("{}hls_ttfb_duration_seconds", prefix),
-            "Time to first byte"
+            format!("{}hls_master_dns_resolve_duration", prefix),
+            "Master Manifest DNS resolution time"
         );
-
         metrics::describe_histogram!(
-            format!("{}hls_dns_resolve_duration_seconds", prefix),
-            "DNS resolution time"
-        );
-
-        metrics::describe_histogram!(
-            format!("{}hls_tls_handshake_duration_seconds", prefix),
-            "TLS handshake duration"
+            format!("{}hls_master_tls_handshake_duration", prefix),
+            "Master Manifest TLS handshake duration"
         );
 
         // Fragment metrics
         metrics::describe_histogram!(
-            format!("{}hls_fragment_download_duration_seconds", prefix),
-            "Time taken to download fragments"
+            format!("{}hls_fragment_download_duration", prefix),
+            "Fragment download time"
         );
-
         metrics::describe_gauge!(
             format!("{}hls_fragment_size_bytes", prefix),
-            "Size of fragments in bytes"
+            "Fragment size"
         );
-
         metrics::describe_gauge!(
-            format!("{}hls_fragment_bandwidth_bytes_per_second", prefix),
-            "Fragment download bandwidth"
+            format!("{}hls_fragment_bandwidth_bytes_per", prefix),
+            "Fragment bandwidth"
         );
-
         metrics::describe_gauge!(
             format!("{}hls_fragment_duration_seconds", prefix),
-            "Duration of fragments"
+            "Fragment duration in seconds"
         );
-
-        // Rendition metrics
         metrics::describe_gauge!(
-            format!("{}hls_rendition_bandwidth_bits_per_second", prefix),
-            "Bandwidth of rendition"
+            format!("{}hls_fragment_sequence_discontinuity", prefix),
+            "Fragment sequence discontinuities"
         );
 
-        // Success/failure metrics
+        // Quality metrics
+        metrics::describe_gauge!(
+            format!("{}hls_buffer_fill_rate", prefix),
+            "Rate at which buffer is filling relative to playback speed (>1 means faster than realtime)"
+        );
+
+        metrics::describe_gauge!(
+            format!("{}hls_estimated_buffer_duration", prefix),
+            "Estimated buffer length in milliseconds based on download speeds"
+        );
+
+        metrics::describe_histogram!(
+            format!("{}hls_initial_buffer_duration", prefix),
+            "Time taken to load initial buffer including master playlist, variant playlist, and first segment"
+        );
+
+        metrics::describe_histogram!(
+            format!("{}hls_playlist_chain_load_time", prefix),
+            "Time taken to load master and variant playlists"
+        );
+
+        // Error metrics
         metrics::describe_counter!(
             format!("{}hls_failures_total", prefix),
-            "Total number of HLS failures"
+            "Total number of failures"
+        );
+        metrics::describe_counter!(
+            format!("{}hls_errors_by_type", prefix),
+            "Errors categorized by type"
         );
     }
 
@@ -103,51 +138,31 @@ impl Collector for HlsCollector {
     }
 
     async fn perform_request(&self) -> Result<Self::Response> {
-        let country_code = self
-            .config
-            .common_config
-            .network
-            .as_ref()
+        let network_config = self.config.common_config.network.as_ref();
+
+        let country_code = network_config
             .and_then(|x| x.country_code)
             .map(|c| c.to_alpha2().to_string())
             .and_then(|x| PerformHlsBodyCountryCode::from_str(&x).ok());
 
-        let continent_code = self
-            .config
-            .common_config
-            .network
-            .as_ref()
+        let continent_code = network_config
             .and_then(|x| x.continent_code.clone())
             .and_then(|c| PerformHlsBodyContinentCode::from_str(c.as_ref()).ok());
 
-        let mobile = self
-            .config
-            .common_config
-            .network
-            .as_ref()
+        let mobile = network_config
             .map(|n| n.mobile.as_ref().to_uppercase())
             .and_then(|mo| PerformHlsBodyMobile::from_str(&mo).ok())
             .unwrap_or_default();
 
-        let residential = self
-            .config
-            .common_config
-            .network
-            .as_ref()
+        let residential = network_config
             .map(|n| n.residential.as_ref().to_uppercase())
             .and_then(|mo| PerformHlsBodyResidential::from_str(&mo).ok())
             .unwrap_or_default();
 
-        let proxy = self
-            .config
-            .common_config
-            .network
-            .as_ref()
+        let proxy = network_config
             .map(|n| n.proxy.as_ref().to_uppercase())
             .and_then(|mo| PerformHlsBodyProxy::from_str(&mo).ok())
             .unwrap_or_default();
-
-        info!(?self.config, ?country_code, "Sending HLS request");
 
         let response = API_CLIENT
             .perform_hls()
@@ -163,143 +178,297 @@ impl Collector for HlsCollector {
                     })
             })
             .send()
-            .await?;
+            .await
+            .inspect_err(|e| {
+                self.handle_error(e);
+            })?;
 
         Ok(response.into_inner())
     }
 
     fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorErrors> {
-        if let Some(result) = response.results.first() {
-            if let (Some(hls_result), Some(node_info)) = (result.result.clone(), response.node_info)
-            {
-                let prefix = &self.config.common_config.prefix;
-                let master = hls_result.master;
+        let prefix = &self.config.common_config.prefix;
+        let endpoint = self.config.common_config.endpoint.clone();
 
-                // Record master playlist metrics
-                histogram!(
-                    format!("{}hls_master_download_duration_seconds", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone()
-                )
-                .record(result.duration.unwrap_or_default() / 1000.0);
+        let node_info = response
+            .node_info
+            .ok_or_else(|| CollectorErrors::MissingNodeInfo(endpoint.clone()))?;
 
-                gauge!(
-                    format!("{}hls_master_size_bytes", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone()
-                )
-                .set(master.clone().unwrap().download_metrics.unwrap().size);
+        let labels = [
+            ("country_code", node_info.country_code.clone()),
+            ("continent", node_info.continent_code.clone()),
+            ("city", node_info.city.clone()),
+            ("isp", node_info.isp.clone()),
+            ("os", node_info.operating_system.clone()),
+            ("endpoint", endpoint.clone()),
+        ];
 
-                gauge!(
-                    format!("{}hls_renditions_count", prefix),
-                    "country_code" => node_info.country_code.clone(),
-                    "continent" => node_info.continent_code.clone(),
-                    "city" => node_info.city.clone(),
-                    "isp" => node_info.isp.clone(),
-                    "endpoint" => result.endpoint.clone()
-                )
-                .set(master.clone().unwrap().renditions.len() as f64);
+        match response.results.first() {
+            Some(result) => {
+                if let Some(hls_result) = &result.result {
+                    histogram!(format!("{}hls_total_duration", self.config.common_config.prefix), &labels).record(result.duration.unwrap_or_default());
 
-                // Record master playlist connection metrics
-                if let Some(metrics) = master.clone().unwrap().metrics {
-                    histogram!(
-                        format!("{}hls_tcp_connect_duration_seconds", prefix),
-                        "country_code" => node_info.country_code.clone(),
-                        "continent" => node_info.continent_code.clone(),
-                        "city" => node_info.city.clone(),
-                        "isp" => node_info.isp.clone(),
-                        "endpoint" => result.endpoint.clone()
-                    )
-                    .record(metrics.tcp_connect_duration_ms / 1000.0);
-
-                    histogram!(
-                        format!("{}hls_ttfb_duration_seconds", prefix),
-                        "country_code" => node_info.country_code.clone(),
-                        "continent" => node_info.continent_code.clone(),
-                        "city" => node_info.city.clone(),
-                        "isp" => node_info.isp.clone(),
-                        "endpoint" => result.endpoint.clone()
-                    )
-                    .record(metrics.http_ttfb_duration_ms / 1000.0);
-
-                    // ... other connection metrics
-                }
-
-                // Record rendition metrics
-                for rendition in master.clone().unwrap().renditions {
-                    // Record fragment metrics for each rendition
-                    for fragment in rendition.content_fragment_metrics {
-                        histogram!(
-                            format!("{}hls_fragment_download_duration_seconds", prefix),
-                            "country_code" => node_info.country_code.clone(),
-                            "continent" => node_info.continent_code.clone(),
-                            "city" => node_info.city.clone(),
-                            "isp" => node_info.isp.clone(),
-                            "endpoint" => result.endpoint.clone(),
-                            "resolution" => rendition.resolution.clone(),
-                            "bandwidth" => rendition.bandwidth.to_string()
-                        )
-                        .record(fragment.download_metrics.clone().unwrap().time_ms / 1000.0);
-
-                        gauge!(
-                            format!("{}hls_fragment_size_bytes", prefix),
-                            "country_code" => node_info.country_code.clone(),
-                            "continent" => node_info.continent_code.clone(),
-                            "city" => node_info.city.clone(),
-                            "isp" => node_info.isp.clone(),
-                            "endpoint" => result.endpoint.clone(),
-                            "resolution" => rendition.resolution.clone(),
-                            "bandwidth" => rendition.bandwidth.to_string()
-                        )
-                        .set(fragment.download_metrics.clone().unwrap().size);
-
-                        gauge!(
-                            format!("{}hls_fragment_bandwidth_bytes_per_second", prefix),
-                            "country_code" => node_info.country_code.clone(),
-                            "continent" => node_info.continent_code.clone(),
-                            "city" => node_info.city.clone(),
-                            "isp" => node_info.isp.clone(),
-                            "endpoint" => result.endpoint.clone(),
-                            "resolution" => rendition.resolution.clone(),
-                            "bandwidth" => rendition.bandwidth.to_string()
-                        )
-                        .set(fragment.download_metrics.clone().unwrap().bytes_per_second);
+                    if let Some(master) = &hls_result.master {
+                        self.record_master_metrics(&labels, master)?;
+                        for rendition in &master.renditions {
+                            self.record_rendition_metrics(&labels, Some(master), &rendition.clone().into())?;
+                        }
                     }
-                }
-            } else {
-                error!("Missing HLS result or node info");
-                self.record_failure("missing_data");
-            }
-        } else {
-            error!("No results returned from API");
-            self.record_failure("no_results");
-        }
 
-        Ok(())
+                    if let Some(rendition) = &hls_result.rendition {
+                        self.record_rendition_metrics(&labels, None, rendition)?;
+                    }
+
+                    Ok(())
+                } else {
+                    self.record_failure("missing_result");
+                    Err(CollectorErrors::MissingData(endpoint, "hls_result"))
+                }
+            }
+            _ => {
+                self.record_failure("missing_data");
+                Err(CollectorErrors::MissingData(endpoint, "hls"))
+            }
+        }
     }
 }
 
 impl HlsCollector {
-    fn handle_error(&self, e: Error<PerformHlsResponse>) {
-        let error_type = if let Some(StatusCode::NOT_FOUND) = e.status() {
-            "no_nodes_found"
+    fn record_master_metrics(
+        &self,
+        labels: &[(&'static str, String)],
+        master: &PerformHlsResponseResultsItemResultMaster
+    ) -> Result<(), CollectorErrors> {
+        let prefix = &self.config.common_config.prefix;
+
+        // Master Manifest TTFB Metrics
+        if let Some(metrics) = &master.metrics {
+            histogram!(format!("{}hls_master_tcp_connect_duration", prefix), labels)
+            .record(metrics.tcp_connect_duration_ms);
+
+            histogram!(format!("{}hls_master_ttfb_duration", prefix), labels)
+                .record(metrics.http_ttfb_duration_ms);
+
+            histogram!(format!("{}hls_master_dns_resolve_duration", prefix), labels)
+                .record(metrics.dns_resolve_duration_ms.unwrap_or_default());
+
+            histogram!(format!("{}hls_master_tls_handshake_duration", prefix), labels)
+                .record(metrics.tls_handshake_duration_ms.unwrap_or_default());
+        }
+        
+        if let Some(download_metrics) = &master.download_metrics {
+            gauge!(format!("{}hls_master_size_bytes", prefix), labels).set(download_metrics.size);
+
+            histogram!(format!("{}hls_master_download_duration", prefix), labels)
+                .record(download_metrics.time_ms);
+
+            gauge!(format!("{}hls_master_bitrate", prefix), labels).set(download_metrics.bytes_per_second * 8.0);
+        }
+
+        gauge!(format!("{}hls_renditions_count", prefix), labels).set(master.renditions.len() as f64);
+        Ok(())
+    }
+
+    /// Useful Metrics:
+    /// - Did the Client download the fragment in the target duration time?
+    /// - What was the "Ratio" percentage they actually downloaded at (how many percent faster or
+    /// slower were they than the target?)
+    /// -
+    fn record_rendition_metrics(
+        &self,
+        labels: &[(&'static str, String)],
+        master: Option<&PerformHlsResponseResultsItemResultMaster>,        
+        rendition: &PerformHlsResponseResultsItemResultRendition,
+    ) -> Result<(), CollectorErrors> {
+        let prefix = &self.config.common_config.prefix;
+
+        let mut labels = labels.to_vec();
+        labels.push(("resolution", rendition.resolution.clone()));
+        labels.push(("bandwidth", rendition.bandwidth.to_string()));
+        labels.push(("target_duration_secs", rendition.target_duration_secs.to_string()));
+        labels.push(("discontinuity_sequence", rendition.discontinuity_sequence.to_string()));
+        labels.push(("playlist_type", if master.is_some() { "variant" } else { "direct" }.to_string()));
+        let labels = &labels;
+
+        for fragment in &rendition.content_fragment_metrics {
+            gauge!(
+                format!("{}hls_fragment_download_ratio", prefix),
+                labels
+            ).set(fragment.download_ratio);
+        
+
+            if let Some(metrics) = &fragment.download_metrics {
+                histogram!(format!("{}hls_fragment_download_duration", prefix), labels)
+                    .record(metrics.time_ms);
+
+                gauge!(format!("{}hls_fragment_size_bytes", prefix), labels).set(metrics.size);
+
+                gauge!(
+                    format!("{}hls_fragment_bandwidth_bytes_per_second", prefix),
+                    labels
+                )
+                .set(metrics.bytes_per_second);
+            }
+
+            if let Some(metrics) = &fragment.metrics {
+                histogram!(format!("{}hls_fragment_tcp_connect_duration", prefix), labels)
+                .record(metrics.tcp_connect_duration_ms);
+
+                histogram!(format!("{}hls_fragment_ttfb_duration", prefix), labels)
+                    .record(metrics.http_ttfb_duration_ms);
+
+                histogram!(format!("{}hls_fragment_dns_resolve_duration", prefix), labels)
+                    .record(metrics.dns_resolve_duration_ms.unwrap_or_default());
+
+                histogram!(format!("{}hls_fragment_tls_handshake_duration", prefix), labels)
+                    .record(metrics.tls_handshake_duration_ms.unwrap_or_default());
+            }
+
+            gauge!(format!("{}hls_fragment_duration_seconds", prefix), labels)
+                .set(fragment.content_fragment_duration_secs);
+        }
+
+        Ok(())
+    }
+
+    fn calculate_buffer_metrics(
+        &self,
+        labels: &[(&'static str, String)],
+        master: &PerformHlsResponseResultsItemResultMaster,
+        rendition: &PerformHlsResponseResultsItemResultRendition,
+    ) -> Result<(), CollectorErrors> {
+        let prefix = &self.config.common_config.prefix;
+
+        // Safely calculate playlist chain load time
+        let master_load_time = master.metrics.as_ref()
+            .map(|m| {
+                m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
+                m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
+                m.tcp_connect_duration_ms as f64 +
+                m.http_ttfb_duration_ms as f64
+            })
+            .unwrap_or(0.0);
+
+        let variant_load_time = rendition.metrics.as_ref()
+            .map(|m| {
+                m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
+                m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
+                m.tcp_connect_duration_ms as f64 +
+                m.http_ttfb_duration_ms as f64
+            })
+            .unwrap_or(0.0);
+
+        let playlist_chain_load_time = master_load_time + variant_load_time;
+
+        // Record playlist chain load time safely
+        if playlist_chain_load_time >= 0.0 {
+            histogram!(
+                format!("{}hls_playlist_chain_load_time", prefix),
+                labels
+            ).record(playlist_chain_load_time);
         } else {
-            "api_error"
+            warn!("Invalid playlist chain load time: {}", playlist_chain_load_time);
+        }
+
+        // Safely handle first fragment calculations
+        if let Some(first_fragment) = rendition.content_fragment_metrics.first() {
+            // Calculate first segment load time safely
+            let first_segment_load_time = first_fragment.metrics.as_ref()
+                .map(|m| {
+                    m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
+                    m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
+                    m.tcp_connect_duration_ms as f64 +
+                    m.http_ttfb_duration_ms as f64 +
+                    first_fragment.download_metrics
+                        .as_ref()
+                        .map(|dm| dm.time_ms as f64)
+                        .unwrap_or(0.0)
+                })
+                .unwrap_or(0.0);
+
+            let initial_buffer_duration = playlist_chain_load_time + first_segment_load_time;
+
+            // Record initial buffer duration safely
+            if initial_buffer_duration >= 0.0 {
+                histogram!(
+                    format!("{}hls_initial_buffer_duration", prefix),
+                    labels
+                ).record(initial_buffer_duration);
+            } else {
+                warn!("Invalid initial buffer duration: {}", initial_buffer_duration);
+            }
+
+            // Record buffer fill rate safely
+            if first_fragment.download_ratio.is_finite() && first_fragment.download_ratio > 0.0 {
+                gauge!(
+                    format!("{}hls_buffer_fill_rate", prefix),
+                    labels
+                ).set(first_fragment.download_ratio);
+            } else {
+                warn!("Invalid download ratio: {}", first_fragment.download_ratio);
+                counter!(
+                    format!("{}hls_buffer_calculation_errors", prefix),
+                    "error_type" => "invalid_download_ratio"
+                ).increment(1);
+            }
+
+            // Calculate and record estimated buffer duration safely
+            if first_fragment.download_ratio.is_finite() && 
+            first_fragment.download_ratio > 1.0 && 
+            first_fragment.content_fragment_duration_secs > 0.0 {
+                let estimated_buffer = (first_fragment.download_ratio - 1.0) * 
+                                        first_fragment.content_fragment_duration_secs as f64 * 1000.0;
+                
+                if estimated_buffer.is_finite() && estimated_buffer >= 0.0 {
+                    gauge!(
+                        format!("{}hls_estimated_buffer_duration", prefix),
+                        labels
+                    ).set(estimated_buffer);
+                } else {
+                    warn!("Invalid estimated buffer duration: {}", estimated_buffer);
+                    counter!(
+                        format!("{}hls_buffer_calculation_errors", prefix),
+                        "error_type" => "invalid_buffer_duration"
+                    ).increment(1);
+                }
+            } else {
+                warn!(
+                    "Invalid values for buffer calculation: ratio={}, duration={}",
+                    first_fragment.download_ratio,
+                    first_fragment.content_fragment_duration_secs
+                );
+                counter!(
+                    format!("{}hls_buffer_calculation_errors", prefix),
+                    "error_type" => "invalid_calculation_parameters"
+                ).increment(1);
+            }
+        } else {
+            warn!("No fragments available for buffer calculations");
+            counter!(
+                format!("{}hls_buffer_calculation_errors", prefix),
+                "error_type" => "no_fragments"
+            ).increment(1);
+        }
+
+        Ok(())
+    }
+
+
+    fn handle_error(&self, error: &Error<PerformHlsResponse>) {
+        let error_type = match error.status() {
+            Some(StatusCode::NOT_FOUND) => {
+                warn!(?self.config.common_config.network, "No nodes found for criteria");
+                "no_nodes_found"
+            }
+            Some(StatusCode::UNAUTHORIZED) => "unauthorized",
+            Some(StatusCode::TOO_MANY_REQUESTS) => "rate_limited",
+            _ => {
+                error!("API request failed: {:#?}", error);
+                "api_error"
+            }
         };
 
         self.record_failure(error_type);
-
-        if let Some(StatusCode::NOT_FOUND) = e.status() {
-            warn!(?self.config.common_config.network, "No nodes were found for the given criteria");
-        } else {
-            error!("API request failed: {:#?}", e);
-        }
     }
 
     fn record_failure(&self, error_type: &str) {
@@ -308,5 +477,58 @@ impl HlsCollector {
             "error_type" => error_type.to_string()
         )
         .increment(1);
+    }
+}
+
+impl Into<PerformHlsResponseResultsItemResultRendition>
+    for PerformHlsResponseResultsItemResultMasterRenditionsItem
+{
+    fn into(self) -> PerformHlsResponseResultsItemResultRendition {
+        PerformHlsResponseResultsItemResultRendition {
+            bandwidth: self.bandwidth,
+            content_fragment_metrics: self
+                .content_fragment_metrics
+                .iter()
+                .map(
+                    |cfm| PerformHlsResponseResultsItemResultRenditionContentFragmentMetricsItem {
+                        content_fragment_duration_secs: cfm.content_fragment_duration_secs,
+                        download_metrics: cfm.download_metrics.as_ref().map(|dm| PerformHlsResponseResultsItemResultRenditionContentFragmentMetricsItemDownloadMetrics { 
+                            bytes_per_second: dm.bytes_per_second,
+                            size: dm.size,
+                            time_ms: dm.time_ms
+                        }),
+                        download_ratio: cfm.download_ratio,
+                        file: cfm.file.clone(),
+                        metrics: cfm.metrics.as_ref().map(|m| PerformHlsResponseResultsItemResultRenditionContentFragmentMetricsItemMetrics{
+                            dns_resolve_duration_ms: m.dns_resolve_duration_ms,
+                            http_get_send_duration_ms: m.http_get_send_duration_ms,
+                            http_ttfb_duration_ms: m.http_ttfb_duration_ms,
+                            tcp_connect_duration_ms: m.tcp_connect_duration_ms,
+                            tls_handshake_duration_ms: m.tls_handshake_duration_ms
+                        }),
+                    },
+                )
+                .collect(),
+            discontinuity_sequence: self.discontinuity_sequence,
+            download_metrics: self.download_metrics.map(|dm| {
+                PerformHlsResponseResultsItemResultRenditionDownloadMetrics {
+                    bytes_per_second: dm.bytes_per_second,
+                    size: dm.size,
+                    time_ms: dm.time_ms,
+                }
+            }),
+            file: self.file,
+            metrics: self
+                .metrics
+                .map(|m| PerformHlsResponseResultsItemResultRenditionMetrics {
+                    dns_resolve_duration_ms: m.dns_resolve_duration_ms,
+                    http_get_send_duration_ms: m.http_get_send_duration_ms,
+                    http_ttfb_duration_ms: m.http_ttfb_duration_ms,
+                    tcp_connect_duration_ms: m.tcp_connect_duration_ms,
+                    tls_handshake_duration_ms: m.tls_handshake_duration_ms,
+                }),
+            resolution: self.resolution,
+            target_duration_secs: self.target_duration_secs,
+        }
     }
 }

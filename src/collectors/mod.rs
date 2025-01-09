@@ -15,7 +15,9 @@ pub enum CollectorErrors {
     #[error("Configuration error: {0}")]
     Config(String),
     #[error("Failed to get node info for {0}")]
-    NodeInfo(String),
+    MissingNodeInfo(String),
+    #[error("Missing crucial data for {0} - {1}")]
+    MissingData(String, &'static str),
 }
 
 /// A trait for implementing metric collectors
