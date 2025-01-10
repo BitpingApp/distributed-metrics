@@ -503,13 +503,13 @@ impl HlsCollector {
     }
 }
 
-impl Into<PerformHlsResponseResultsItemResultRendition>
-    for PerformHlsResponseResultsItemResultMasterRenditionsItem
+impl From<PerformHlsResponseResultsItemResultMasterRenditionsItem>
+    for PerformHlsResponseResultsItemResultRendition
 {
-    fn into(self) -> PerformHlsResponseResultsItemResultRendition {
+    fn from(val: PerformHlsResponseResultsItemResultMasterRenditionsItem) -> Self {
         PerformHlsResponseResultsItemResultRendition {
-            bandwidth: self.bandwidth,
-            content_fragment_metrics: self
+            bandwidth: val.bandwidth,
+            content_fragment_metrics: val
                 .content_fragment_metrics
                 .iter()
                 .map(
@@ -532,16 +532,16 @@ impl Into<PerformHlsResponseResultsItemResultRendition>
                     },
                 )
                 .collect(),
-            discontinuity_sequence: self.discontinuity_sequence,
-            download_metrics: self.download_metrics.map(|dm| {
+            discontinuity_sequence: val.discontinuity_sequence,
+            download_metrics: val.download_metrics.map(|dm| {
                 PerformHlsResponseResultsItemResultRenditionDownloadMetrics {
                     bytes_per_second: dm.bytes_per_second,
                     size: dm.size,
                     time_ms: dm.time_ms,
                 }
             }),
-            file: self.file,
-            metrics: self
+            file: val.file,
+            metrics: val
                 .metrics
                 .map(|m| PerformHlsResponseResultsItemResultRenditionMetrics {
                     dns_resolve_duration_ms: m.dns_resolve_duration_ms,
@@ -550,8 +550,8 @@ impl Into<PerformHlsResponseResultsItemResultRendition>
                     tcp_connect_duration_ms: m.tcp_connect_duration_ms,
                     tls_handshake_duration_ms: m.tls_handshake_duration_ms,
                 }),
-            resolution: self.resolution,
-            target_duration_secs: self.target_duration_secs,
+            resolution: val.resolution,
+            target_duration_secs: val.target_duration_secs,
         }
     }
 }
