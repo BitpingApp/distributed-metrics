@@ -162,119 +162,55 @@ impl Collector for DnsCollector {
     }
 
     fn handle_response(&self, response: PerformDnsResponse) -> Result<(), CollectorErrors> {
+        let endpoint = self
+            .config
+            .common_config
+            .name
+            .as_ref()
+            .unwrap_or(&self.config.common_config.endpoint);
+
+        let node_info = response
+            .node_info
+            .ok_or_else(|| CollectorErrors::MissingNodeInfo(endpoint.clone()))?;
+
+        // Core labels - essential dimensions only
+        let mut labels: HashMap<&str, String> = HashMap::from_iter([
+            ("country_code", node_info.country_code.clone()),
+            ("continent", node_info.continent_code.clone()),
+            ("city", node_info.city.clone()),
+            ("isp", node_info.isp.clone()),
+            ("os", node_info.operating_system.clone()),
+            ("endpoint", endpoint.clone()),
+        ]);
+
         if let Some(result) = response.results.first() {
-            let prefix = &self.config.common_config.prefix;
-            let node_info = response
-                .node_info
-                .ok_or_else(|| CollectorErrors::MissingNodeInfo(result.endpoint.clone()))?;
-
-            // Core labels - essential dimensions only
-            let common_labels = [
-                ("country_code", node_info.country_code.clone()),
-                ("continent", node_info.continent_code.clone()),
-                ("city", node_info.city.clone()),
-                ("isp", node_info.isp.clone()),
-                ("os", node_info.operating_system.clone()),
-                // ("residential", node_info.residential.to_string()),
-                // ("proxy", node_info.proxy.to_string()),
-                // ("mobile", node_info.mobile.to_string()),
-                ("endpoint", result.endpoint.clone()),
-            ];
-
-            if let Some(dns_result) = result.result.clone() {
+            if let Some(error) = &result.error {
+                // Handle error case
+                self.record_failure_with_labels(error, &labels);
+            } else if let Some(dns_result) = &result.result {
+                // Handle success case
                 let cleaned_dns_ips = dns_result
                     .dns_servers
                     .iter()
                     .map(|s| s.replace("udp:", "").replace("tcp:", "").replace(":53", ""));
+
                 let dns_providers = identify_dns_providers(cleaned_dns_ips);
 
                 for server in dns_providers {
-                    let mut server_labels = common_labels.to_vec();
-                    server_labels.push(("dns_server", server));
-
-                    // Only record counts for the configured lookup type
-                    let record_count = match self.config.lookup_type {
-                        LookupTypes::IP => (
-                            "ip",
-                            dns_result.ips.len(),
-                            Self::hash_records(&dns_result.ips[..]),
-                        ),
-                        LookupTypes::MX => (
-                            "mx",
-                            dns_result.mx.len(),
-                            Self::hash_records(&dns_result.mx[..]),
-                        ),
-                        LookupTypes::TXT => (
-                            "txt",
-                            dns_result.txt.len(),
-                            Self::hash_records(&dns_result.txt[..]),
-                        ),
-                        LookupTypes::NS => (
-                            "ns",
-                            dns_result.ns.len(),
-                            Self::hash_records(&dns_result.ns[..]),
-                        ),
-                        LookupTypes::SRV => (
-                            "srv",
-                            dns_result.srv.len(),
-                            Self::hash_records(&dns_result.srv[..]),
-                        ),
-                        LookupTypes::TLSA => (
-                            "tlsa",
-                            dns_result.tlsa.len(),
-                            Self::hash_records(&dns_result.tlsa[..]),
-                        ),
-                        LookupTypes::SOA => (
-                            "soa",
-                            dns_result.soa.len(),
-                            Self::hash_records(&dns_result.soa[..]),
-                        ),
-                    };
-
-                    let (record_type, count, hash) = record_count;
-                    server_labels.push(("record_type", record_type.into()));
-
-                    counter!(format!("{}dns_lookup_total", prefix), &server_labels).increment(1);
-
-                    // Core metrics
-                    histogram!(
-                        format!("{}dns_server_lookup_duration_ms", prefix),
-                        &server_labels
-                    )
-                    .record(result.duration.unwrap_or(0.0));
-
-                    gauge!(format!("{}dns_record_hash", prefix), &server_labels).set(hash as f64);
-
-                    // Record success/failure based on whether we got any records
-                    if count > 0 {
-                        counter!(
-                            format!("{}dns_lookup_success_total", prefix),
-                            &server_labels
-                        )
-                        .increment(1);
-                    } else {
-                        counter!(
-                            format!("{}dns_lookup_failures_total", prefix),
-                            &server_labels
-                        )
-                        .increment(1);
-                    }
-
-                    gauge!(format!("{}dns_records_count", prefix), &server_labels)
-                        .set(count as f64);
+                    labels.insert("dns_server", server);
+                    self.record_success_metrics(
+                        dns_result,
+                        result.duration.unwrap_or(0.0),
+                        &labels,
+                    );
                 }
             } else {
-                counter!(format!("{}dns_lookup_total", prefix), &common_labels).increment(1);
-
-                counter!(
-                    format!(
-                        "{}dns_lookup_error_total",
-                        &self.config.common_config.prefix
-                    ),
-                    &common_labels
-                )
-                .increment(1);
+                error!("Missing DNS result data");
+                return Err(CollectorErrors::MissingData(endpoint.clone(), "dns_result"));
             }
+        } else {
+            error!("No results returned from API");
+            return Err(CollectorErrors::MissingData(endpoint.clone(), "no_results"));
         }
 
         Ok(())
@@ -282,6 +218,72 @@ impl Collector for DnsCollector {
 }
 
 impl DnsCollector {
+    fn record_failure_with_labels(&self, error: &str, labels: &HashMap<&'static str, String>) {
+        let mut labels = labels.clone();
+        let error_type = match error {
+            e if e.contains("no record found for Query") => "no_records",
+            e if e.contains("connection refused") => "connection_refused",
+            e if e.contains("connection timed out") => "timeout",
+            e if e.contains("name resolution failed") => "resolution_failed",
+            e if e.contains("server misbehaving") => "server_misbehaving",
+            e if e.contains("network is unreachable") => "network_unreachable",
+            e => {
+                warn!(?e, "Unable to parse DNS error, returning unknown_error");
+                "unknown_error"
+            }
+        };
+        labels.insert("error_type", error_type.into());
+
+        counter!(
+            format!("{}dns_lookup_error_total", self.config.common_config.prefix),
+            &labels
+        )
+        .increment(1);
+    }
+
+    fn record_success_metrics(
+        &self,
+        result: &PerformDnsResponseResultsItemResult,
+        duration: f64,
+        labels: &HashMap<&'static str, String>,
+    ) {
+        let prefix = &self.config.common_config.prefix;
+
+        // Record lookup duration
+        histogram!(format!("{}dns_server_lookup_duration_ms", prefix), labels).record(duration);
+
+        // Record counts and hashes based on lookup type
+        let (record_type, count, hash) = match self.config.lookup_type {
+            LookupTypes::IP => ("ip", result.ips.len(), Self::hash_records(&result.ips[..])),
+            LookupTypes::MX => ("mx", result.mx.len(), Self::hash_records(&result.mx[..])),
+            LookupTypes::TXT => ("txt", result.txt.len(), Self::hash_records(&result.txt[..])),
+            LookupTypes::NS => ("ns", result.ns.len(), Self::hash_records(&result.ns[..])),
+            LookupTypes::SRV => ("srv", result.srv.len(), Self::hash_records(&result.srv[..])),
+            LookupTypes::TLSA => (
+                "tlsa",
+                result.tlsa.len(),
+                Self::hash_records(&result.tlsa[..]),
+            ),
+            LookupTypes::SOA => ("soa", result.soa.len(), Self::hash_records(&result.soa[..])),
+        };
+
+        let mut record_labels = labels.clone();
+        record_labels.insert("record_type", record_type.into());
+
+        gauge!(format!("{}dns_record_hash", prefix), &record_labels).set(hash as f64);
+        gauge!(format!("{}dns_records_count", prefix), &record_labels).set(count as f64);
+
+        if count > 0 {
+            counter!(
+                format!("{}dns_lookup_success_total", prefix),
+                &record_labels
+            )
+            .increment(1);
+        }
+
+        counter!(format!("{}dns_lookup_total", prefix), &record_labels).increment(1);
+    }
+
     fn hash_records<T: AsRef<str>>(records: &[T]) -> u64 {
         use std::collections::BTreeSet;
 

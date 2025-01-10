@@ -78,6 +78,8 @@ pub struct IcmpConfig {
 pub struct MetricConfig {
     #[serde(default)]
     pub prefix: String,
+    #[serde(default)]
+    pub name: Option<String>,
     pub endpoint: String,
     #[serde(with = "humantime_serde")]
     pub frequency: Duration,

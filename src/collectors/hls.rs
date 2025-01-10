@@ -184,28 +184,46 @@ impl Collector for HlsCollector {
         Ok(response.into_inner())
     }
 
-    fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorErrors> {
+fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorErrors> {
         let prefix = &self.config.common_config.prefix;
-        let endpoint = self.config.common_config.endpoint.clone();
+        let endpoint = self
+            .config
+            .common_config
+            .name
+            .as_ref()
+            .unwrap_or(&self.config.common_config.endpoint);
 
         let node_info = response
             .node_info
             .ok_or_else(|| CollectorErrors::MissingNodeInfo(endpoint.clone()))?;
 
-        let labels = [
+        let labels = HashMap::from_iter([
             ("country_code", node_info.country_code.clone()),
             ("continent", node_info.continent_code.clone()),
             ("city", node_info.city.clone()),
             ("isp", node_info.isp.clone()),
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
-        ];
+        ]);
 
         match response.results.first() {
             Some(result) => {
-                if let Some(hls_result) = &result.result {
-                    histogram!(format!("{}hls_total_ms", self.config.common_config.prefix), &labels).record(result.duration.unwrap_or_default());
+                if let Some(error) = &result.error {
+                    // Handle error case
+                    error!("HLS error occurred: {}", error);
+                    self.record_failure_with_labels(error, &labels);
+                    return Ok(());
+                }
 
+                if let Some(hls_result) = &result.result {
+                    // Record total duration for successful requests
+                    histogram!(
+                        format!("{}hls_total_ms", self.config.common_config.prefix),
+                        &labels
+                    )
+                    .record(result.duration.unwrap_or_default());
+
+                    // Process master playlist if present
                     if let Some(master) = &hls_result.master {
                         self.record_master_metrics(&labels, master)?;
                         for rendition in &master.renditions {
@@ -213,19 +231,18 @@ impl Collector for HlsCollector {
                         }
                     }
 
+                    // Process direct rendition if present
                     if let Some(rendition) = &hls_result.rendition {
                         self.record_rendition_metrics(&labels, None, rendition)?;
                     }
 
                     Ok(())
                 } else {
-                    self.record_failure(&labels);
-                    Err(CollectorErrors::MissingData(endpoint, "hls_result"))
+                    Err(CollectorErrors::MissingData(endpoint.clone(), "hls_result"))
                 }
             }
-            _ => {
-                self.record_failure(&labels);
-                Err(CollectorErrors::MissingData(endpoint, "hls"))
+            None => {
+                Err(CollectorErrors::MissingData(endpoint.clone(), "no_results"))
             }
         }
     }
@@ -234,7 +251,7 @@ impl Collector for HlsCollector {
 impl HlsCollector {
     fn record_master_metrics(
         &self,
-        labels: &[(&'static str, String)],
+        labels: &HashMap<&'static str, String>,
         master: &PerformHlsResponseResultsItemResultMaster
     ) -> Result<(), CollectorErrors> {
         let prefix = &self.config.common_config.prefix;
@@ -267,25 +284,20 @@ impl HlsCollector {
         Ok(())
     }
 
-    /// Useful Metrics:
-    /// - Did the Client download the fragment in the target duration time?
-    /// - What was the "Ratio" percentage they actually downloaded at (how many percent faster or
-    /// slower were they than the target?)
-    /// -
     fn record_rendition_metrics(
         &self,
-        labels: &[(&'static str, String)],
+        labels: &HashMap<&'static str, String>,
         master: Option<&PerformHlsResponseResultsItemResultMaster>,        
         rendition: &PerformHlsResponseResultsItemResultRendition,
     ) -> Result<(), CollectorErrors> {
         let prefix = &self.config.common_config.prefix;
 
-        let mut labels = labels.to_vec();
-        labels.push(("resolution", rendition.resolution.clone()));
-        labels.push(("bandwidth", rendition.bandwidth.to_string()));
-        labels.push(("target_duration_secs", rendition.target_duration_secs.to_string()));
-        labels.push(("discontinuity_sequence", rendition.discontinuity_sequence.to_string()));
-        labels.push(("playlist_type", if master.is_some() { "variant" } else { "direct" }.to_string()));
+        let mut labels = labels.clone();
+        labels.insert("resolution", rendition.resolution.clone());
+        labels.insert("bandwidth", rendition.bandwidth.to_string());
+        labels.insert("target_duration_secs", rendition.target_duration_secs.to_string());
+        labels.insert("discontinuity_sequence", rendition.discontinuity_sequence.to_string());
+        labels.insert("playlist_type", if master.is_some() { "variant" } else { "direct" }.to_string());
         let labels = &labels;
 
         for fragment in &rendition.content_fragment_metrics {
@@ -336,7 +348,7 @@ impl HlsCollector {
     
     fn calculate_buffer_metrics(
         &self,
-        labels: &[(&'static str, String)],
+        labels: &HashMap<&'static str, String>,
         master: Option<&PerformHlsResponseResultsItemResultMaster>,
         rendition: &PerformHlsResponseResultsItemResultRendition,
     ) -> Result<(), CollectorErrors> {
@@ -346,19 +358,19 @@ impl HlsCollector {
         let master_load_time = master
             .and_then(|m| m.metrics.as_ref())
             .map(|m| {
-                m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
-                m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
-                m.tcp_connect_duration_ms as f64 +
-                m.http_ttfb_duration_ms as f64
+                m.dns_resolve_duration_ms.unwrap_or(0.0) +
+                m.tls_handshake_duration_ms.unwrap_or(0.0) +
+                m.tcp_connect_duration_ms +
+                m.http_ttfb_duration_ms
             })
             .unwrap_or(0.0);
 
         let variant_load_time = rendition.metrics.as_ref()
             .map(|m| {
-                m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
-                m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
-                m.tcp_connect_duration_ms as f64 +
-                m.http_ttfb_duration_ms as f64
+                m.dns_resolve_duration_ms.unwrap_or(0.0) +
+                m.tls_handshake_duration_ms.unwrap_or(0.0) +
+                m.tcp_connect_duration_ms +
+                m.http_ttfb_duration_ms
             })
             .unwrap_or(0.0);
 
@@ -379,13 +391,13 @@ impl HlsCollector {
             // Calculate first segment load time safely
             let first_segment_load_time = first_fragment.metrics.as_ref()
                 .map(|m| {
-                    m.dns_resolve_duration_ms.unwrap_or(0.0) as f64 +
-                    m.tls_handshake_duration_ms.unwrap_or(0.0) as f64 +
-                    m.tcp_connect_duration_ms as f64 +
-                    m.http_ttfb_duration_ms as f64 +
+                    m.dns_resolve_duration_ms.unwrap_or(0.0) +
+                    m.tls_handshake_duration_ms.unwrap_or(0.0) +
+                    m.tcp_connect_duration_ms +
+                    m.http_ttfb_duration_ms +
                     first_fragment.download_metrics
                         .as_ref()
-                        .map(|dm| dm.time_ms as f64)
+                        .map(|dm| dm.time_ms)
                         .unwrap_or(0.0)
                 })
                 .unwrap_or(0.0);
@@ -457,10 +469,35 @@ impl HlsCollector {
         Ok(())
     }
 
-    fn record_failure(&self,labels: &[(&'static str, String)]) {
+    fn record_failure_with_labels(&self, error: &str, labels: &HashMap<&'static str, String>) {
+        let mut labels = labels.clone();
+        let error_type = match error {
+            e if e.contains("dns error") || e.contains("no record found for Query") => "dns_error",
+            e if e.contains("NoSuchKey") || e.contains("does not exist") => "not_found",
+            e if e.contains("Failed to parse root m3u8") => "invalid_manifest",
+            e if e.contains("connection timed out") => "timeout",
+            e if e.contains("client error (Connect)") => "connection_error",
+            e if e.contains("certificate") => "ssl_error",
+            e if e.contains("404") => "http_404",
+            e if e.contains("403") => "http_403",
+            e if e.contains("500") => "http_500",
+            e => {
+                warn!(?e, "Unable to parse HLS error, returning unknown_error");
+                "unknown_error"
+            }
+        };
+        labels.insert("error_type", error_type.into());
+
+        // Record the failure metrics
         counter!(
             format!("{}hls_failures_total", self.config.common_config.prefix),
-            labels
+            &labels
+        )
+        .increment(1);
+
+        counter!(
+            format!("{}hls_errors_by_type", self.config.common_config.prefix),
+            &labels
         )
         .increment(1);
     }
