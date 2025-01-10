@@ -1,4 +1,4 @@
-# Distributed Metrics Collector
+# Global Metrics Collector
 
 This tool uses the Bitping Developer API to collect metrics about different protocols and how services respond from an external perspective.
 
@@ -77,31 +77,41 @@ Measures DNS resolution performance and reliability.
 ```yaml
 metrics:
   - type: dns
+    prefix: "custom_prefix_" # Optional prefix for metrics
+    name: "custom_name" # Optional name override
     endpoint: example.com
-    frequency_ms: 1000
+    frequency: 1s
     network:
       proxy: denied
       mobile: allowed
       residential: required
       country_code: NLD # Optional: ISO 3166-1 alpha-3 country code
       continent_code: EU # Optional: AF, AN, AS, EU, NA, OC, SA
+      isp_regex: "^Comcast" # Optional: Filter by ISP name
+      node_id: "node123" # Optional: Specific node ID
+    lookup_type: IP # Optional: IP, MX, SOA, NS, TXT, SRV, TLSA (default: IP)
 ```
 
 Metrics collected:
 
-- `dns_lookup_duration_seconds`: Time taken for DNS resolution
-- `dns_lookup_success_ratio`: Success rate of DNS lookups
-- `dns_records_returned`: Number of DNS records returned
-- `dns_lookup_failures_total`: Count of DNS lookup failures
+- `dns_lookup_success_total`: Count of successful DNS lookups
+- `dns_lookup_error_total`: Count of DNS lookup errors by type
+- `dns_lookup_total`: Total number of DNS lookups attempted
+- `dns_server_lookup_duration_ms`: Time taken for DNS resolution
+- `dns_record_hash`: Hash of the DNS response for change detection
+- `dns_records_count`: Number of records returned
+- `dns_soa_records_count`: Number of SOA records (when applicable)
 
 Labels:
-
 - country_code
 - continent
 - city
 - isp
+- os
 - endpoint
-- record_type (for records_returned)
+- dns_server
+- record_type
+- error_type (for errors)
 
 ### ICMP
 
@@ -110,8 +120,10 @@ Measures network latency and packet loss.
 ```yaml
 metrics:
   - type: icmp
+    prefix: "custom_prefix_" # Optional prefix for metrics
+    name: "custom_name" # Optional name override
     endpoint: example.com
-    frequency_ms: 1000
+    frequency: 1s
     network:
       proxy: denied
       mobile: allowed
@@ -120,7 +132,9 @@ metrics:
 
 Metrics collected:
 
-- `icmp_ping_duration_seconds`: Overall ping duration
+- `icmp_ping_failures_total`: Count of ping failures
+- `icmp_ping_success_total`: Count of successful pings
+- `icmp_ping_duration_ms`: Overall ping duration
 - `icmp_ping_latency_min_ms`: Minimum latency
 - `icmp_ping_latency_max_ms`: Maximum latency
 - `icmp_ping_latency_avg_ms`: Average latency
@@ -129,16 +143,16 @@ Metrics collected:
 - `icmp_ping_packets_sent`: Number of packets sent
 - `icmp_ping_packets_received`: Number of packets received
 - `icmp_ping_success_ratio`: Success rate of pings
-- `icmp_ping_failures_total`: Count of ping failures
 
 Labels:
-
 - country_code
 - continent
 - city
 - isp
+- os
 - endpoint
 - ip_address
+- error_type (for failures)
 
 ### HLS
 
@@ -147,37 +161,65 @@ Measures HLS video stream performance and quality metrics.
 ```yaml
 metrics:
   - type: hls
+    prefix: "custom_prefix_" # Optional prefix for metrics
+    name: "custom_name" # Optional name override
     endpoint: https://example.com/stream.m3u8
-    frequency_ms: 15000
+    frequency: 15s
+    network:
+      proxy: denied
+      mobile: allowed
+      residential: required
+    headers: # Optional custom headers
+      User-Agent: "CustomPlayer/1.0"
+      Authorization: "Bearer token123"
 ```
 
 Metrics collected:
 
-- `hls_master_download_duration_seconds`: Time to download master playlist
-- `hls_master_size_bytes`: Size of master playlist
-- `hls_renditions_count`: Number of available quality levels
-- `hls_tcp_connect_duration_seconds`: TCP connection time
-- `hls_ttfb_duration_seconds`: Time to first byte
-- `hls_dns_resolve_duration_seconds`: DNS resolution time
-- `hls_tls_handshake_duration_seconds`: TLS handshake time
-- `hls_fragment_download_duration_seconds`: Fragment download time
+- `hls_total_ms`: Total time taken for HLS test
+- `hls_master_download_ms`: Master playlist download time
+- `hls_master_size_bytes`: Master playlist size
+- `hls_master_bitrate`: Master playlist download speed
+- `hls_renditions_count`: Number of available renditions
+- `hls_master_tcp_connect_ms`: TCP connection time
+- `hls_master_ttfb_ms`: Time to first byte
+- `hls_master_dns_resolve_ms`: DNS resolution time
+- `hls_master_tls_handshake_ms`: TLS handshake time
+- `hls_fragment_download_ms`: Fragment download times
 - `hls_fragment_size_bytes`: Fragment sizes
-- `hls_fragment_bandwidth_bytes_per_second`: Fragment download speeds
+- `hls_fragment_bandwidth_bytes_per`: Fragment bandwidth
 - `hls_fragment_duration_seconds`: Fragment durations
-- `hls_rendition_bandwidth_bits_per_second`: Rendition bandwidths
-- `hls_failures_total`: Count of HLS failures
+- `hls_buffer_fill_rate`: Buffer fill rate vs playback speed
+- `hls_estimated_buffer_ms`: Estimated buffer length
+- `hls_initial_buffer_ms`: Initial buffering time
+- `hls_playlist_chain_load_time`: Total playlist load time
+- `hls_failures_total`: Count of failures
+- `hls_errors_by_type`: Errors by category
 
 Labels:
-
 - country_code
 - continent
 - city
 - isp
+- os
 - endpoint
-- resolution (for rendition metrics)
-- bandwidth (for rendition metrics)
+- resolution
+- bandwidth
+- target_duration_secs
+- discontinuity_sequence
+- playlist_type
+- error_type (for failures)
 
 ## Configuration
+
+### Global Configuration
+
+```yaml
+metric_clear_timeout: 10s # How long to keep metrics after a scrape has occured - prevents timeouts on scraping as cardinality can be high
+
+metrics:
+  # Protocol configurations as shown above
+```
 
 ### Network Selection Parameters
 
@@ -188,47 +230,23 @@ All protocols support these network selection criteria:
 - `residential`: Policy for residential nodes (allowed, denied, required)
 - `continent_code`: Optional continent restriction (AF, AN, AS, EU, NA, OC, SA)
 - `country_code`: Optional country restriction (ISO 3166-1 alpha-3)
+- `isp_regex`: Optional ISP name filter using regex
+- `node_id`: Optional specific node selection
 
-### Example Full Configuration
+### Common Metric Configuration
 
-```yaml
-metrics:
-  - type: dns
-    endpoint: example.com
-    frequency_ms: 1000
-    network:
-      proxy: denied
-      mobile: allowed
-      residential: required
-      country_code: NLD
-      continent_code: EU
+All metrics support these base configuration options:
 
-  - type: icmp
-    endpoint: example.com
-    frequency_ms: 1000
-    network:
-      proxy: denied
-      mobile: allowed
-      residential: required
-
-  - type: hls
-    endpoint: https://example.com/stream.m3u8
-    frequency_ms: 15000
-```
+- `prefix`: Optional prefix for metric names
+- `name`: Optional name override for the endpoint label
+- `endpoint`: Target hostname or URL
+- `frequency`: How often to collect metrics (e.g., "1s", "15s", "1m")
+- `network`: Network selection criteria (see above)
 
 ## Error Handling
 
-All collectors track failures with specific error types:
+All collectors track failures with specific error types in their respective `*_failures_total` or `*_errors_by_type` metrics. Common error categories include:
 
-- `no_nodes_found`: No nodes matching the network criteria
-- `api_error`: API communication errors
-- `missing_data`: Incomplete/invalid response data
-- `no_results`: Empty response from API
-
-These errors are tracked in the `*_failures_total` metrics with an `error_type` label.
-
-## Coming Soon
-
-- HTTP GET metrics
-- Additional protocol support
-- More detailed documentation and examples
+- DNS: no_records, connection_refused, timeout, resolution_failed, server_misbehaving
+- ICMP: dns_lookup_failed, timeout, host_unreachable, permission_denied, network_unreachable
+- HLS: dns_error, not_found, invalid_manifest, timeout, connection_error, ssl_error, http_4xx/5xx
