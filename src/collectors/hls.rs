@@ -1,13 +1,11 @@
 use super::{Collector, CollectorErrors};
-use crate::config::{HlsConfig, MetricConfig};
+use crate::config::HlsConfig;
 use crate::types::*;
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
 use metrics::{counter, gauge, histogram};
-use progenitor::progenitor_client::Error;
-use reqwest::StatusCode;
 use std::{collections::HashMap, str::FromStr};
-use tracing::{debug, error, info, warn};
+use tracing::{error, warn};
 
 pub struct HlsCollector {
     config: &'static HlsConfig,

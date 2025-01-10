@@ -1,5 +1,5 @@
 use super::{Collector, CollectorErrors};
-use crate::config::{IcmpConfig, MetricConfig};
+use crate::config::IcmpConfig;
 use crate::types::{
     PerformIcmpBodyContinentCode, PerformIcmpBodyCountryCode, PerformIcmpBodyMobile,
     PerformIcmpBodyProxy, PerformIcmpBodyResidential, PerformIcmpResponse,

@@ -1,25 +1,22 @@
 mod errors;
 
 use super::{Collector, CollectorErrors};
-use crate::config::{DnsConfig, LookupTypes, MetricConfig};
+use crate::config::{DnsConfig, LookupTypes};
 use crate::types::{
     PerformDnsBodyConfiguration, PerformDnsBodyConfigurationLookupTypesItem,
     PerformDnsBodyContinentCode, PerformDnsBodyCountryCode, PerformDnsBodyMobile,
-    PerformDnsBodyProxy, PerformDnsBodyResidential, PerformDnsResponse, PerformDnsResponseNodeInfo,
-    PerformDnsResponseResultsItemResult, PerformHlsResponse,
+    PerformDnsBodyProxy, PerformDnsBodyResidential, PerformDnsResponse,
+    PerformDnsResponseResultsItemResult,
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
 use metrics::{counter, gauge, histogram};
-use progenitor::progenitor_client::Error;
-use reqwest::StatusCode;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::ops::Deref;
 use std::str::FromStr;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, warn};
 
 pub struct DnsCollector {
     config: &'static DnsConfig,

@@ -1,7 +1,7 @@
-use crate::config::{Conf, MetricConfig};
+use crate::config::Conf;
 use collectors::icmp::IcmpCollector;
-use collectors::{dns, hls, icmp, Collector};
-use color_eyre::eyre::{Context, Result};
+use collectors::{dns, hls, Collector};
+use color_eyre::eyre::Result;
 use config::MetricType;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::MetricKindMask;
@@ -11,9 +11,8 @@ use poem::EndpointExt;
 use poem::{get, handler, listener::TcpListener, Route, Server};
 use progenitor::generate_api;
 use std::sync::LazyLock;
-use std::time::Duration;
 use tokio::join;
-use tokio::task::{JoinSet, LocalSet};
+use tokio::task::JoinSet;
 use tracing::{error, info};
 
 mod collectors;
