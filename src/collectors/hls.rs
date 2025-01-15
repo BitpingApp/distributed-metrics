@@ -207,8 +207,8 @@ fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorE
 
         if let Ok(v) = geohash::encode(
             Coord {
-                x: node_info.lat,
-                y: node_info.lon,
+                x: node_info.lon,
+                y: node_info.lat,
             },
             5,
         ) {
