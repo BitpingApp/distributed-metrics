@@ -10,6 +10,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
@@ -58,11 +59,6 @@ impl Collector for DnsCollector {
         metrics::describe_gauge!(
             format!("{}dns_records_count", prefix),
             "Number of records in DNS response"
-        );
-
-        metrics::describe_gauge!(
-            format!("{}dns_soa_records_count", prefix),
-            "Number of SOA records in DNS response"
         );
     }
 
@@ -179,6 +175,15 @@ impl Collector for DnsCollector {
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+        if let Ok(v) = geohash::encode(
+            Coord {
+                x: node_info.lat,
+                y: node_info.lon,
+            },
+            5,
+        ) {
+            labels.insert("geohash", v);
+        }
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {

@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 15,
+  "id": 16,
   "links": [],
   "panels": [
     {
@@ -60,7 +60,7 @@
               },
               {
                 "color": "green",
-                "value": 0.99
+                "value": 0.98
               }
             ]
           },
@@ -76,9 +76,11 @@
       },
       "id": 2,
       "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
         "orientation": "auto",
+        "percentChangeColorMode": "same_as_value",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -86,9 +88,9 @@
           "fields": "",
           "values": false
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "11.3.0",
       "targets": [
@@ -97,15 +99,22 @@
             "type": "prometheus",
             "uid": "vm-metrics"
           },
+          "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(dns_lookup_success_total{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}) / (sum(dns_lookup_success_total{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}) + sum(dns_lookup_failures_total{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}))",
-          "legendFormat": "Success Rate",
+          "exemplar": false,
+          "expr": "clamp_max(\n  (\n    sum(last_over_time(increase(dns_lookup_success_total{continent=~\"$continent\", country_code=~\"$country\", city=~\"$city\", isp=~\"$isp\", endpoint=~\"$endpoint\"}[$__rate_interval])[$__rate_interval:]))\n    /\n    sum(last_over_time(increase(dns_lookup_total{continent=~\"$continent\", country_code=~\"$country\", city=~\"$city\", isp=~\"$isp\", endpoint=~\"$endpoint\"}[$__rate_interval])[$__rate_interval:]))\n  ), \n  1\n)\n",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "Success",
+          "useBackend": false
         }
       ],
-      "title": "Global DNS Success Rate",
-      "type": "gauge"
+      "title": "DNS Lookup Success Rate",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -115,48 +124,32 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
           },
+          "fieldMinMax": false,
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 200
               }
             ]
           },
@@ -172,441 +165,16 @@
       },
       "id": 3,
       "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max",
-            "min"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "vm-metrics"
-          },
-          "editorMode": "code",
-          "expr": "avg(dns_server_lookup_duration_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}) by (dns_server)",
-          "legendFormat": "{{dns_server}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Global DNS Resolution Time by Provider",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 9
-      },
-      "id": 4,
-      "panels": [],
-      "title": "DNS Poisoning Detection",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "vm-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 10
-      },
-      "id": 5,
-      "options": {
-        "displayMode": "basic",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "vm-metrics"
-          },
-          "editorMode": "code",
-          "expr": "count by (country_code) (count by (country_code, ip_record_hash) (dns_ip_records_count{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"})) - 1",
-          "legendFormat": "{{country_code}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "IP Record Hash Inconsistencies by Country",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "vm-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 10
-      },
-      "id": 6,
-      "options": {
-        "displayMode": "basic",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "vm-metrics"
-          },
-          "editorMode": "code",
-          "expr": "count by (country_code) (count by (country_code, mx_record_hash) (dns_mx_records_count{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"})) - 1",
-          "legendFormat": "{{country_code}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "MX Record Hash Inconsistencies by Country",
-      "type": "bargauge"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 18
-      },
-      "id": 7,
-      "panels": [],
-      "title": "Record Type Analysis",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "vm-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 19
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "vm-metrics"
-          },
-          "editorMode": "code",
-          "expr": "sum by (record_type) (dns_record_count{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"})",
-          "legendFormat": "{{record_type}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Record Type Distribution",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "vm-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 19
-      },
-      "id": 9,
-      "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "vm-metrics"
-          },
-          "editorMode": "code",
-          "expr": "avg(dns_server_lookup_duration_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}) by (dns_server)",
-          "legendFormat": "{{dns_server}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "DNS Server Response Times",
-      "type": "gauge"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 27
-      },
-      "id": 10,
-      "panels": [],
-      "title": "Geographic Analysis",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "vm-metrics"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 28
-      },
-      "id": 11,
-      "options": {
         "basemap": {
-          "name": "Basemap",
+          "config": {},
+          "name": "Layer 0",
           "type": "default"
         },
         "controls": {
           "mouseWheelZoom": true,
           "showAttribution": true,
           "showDebug": false,
-          "showMeasure": false,
+          "showMeasure": true,
           "showScale": false,
           "showZoom": true
         },
@@ -616,7 +184,7 @@
               "showLegend": true,
               "style": {
                 "color": {
-                  "field": "value",
+                  "field": "Value",
                   "fixed": "dark-green"
                 },
                 "opacity": 0.4,
@@ -635,18 +203,30 @@
                   "fixed": "img/icons/marker/circle.svg",
                   "mode": "fixed"
                 },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "Value",
+                  "fixed": "",
+                  "mode": "field"
+                },
                 "textConfig": {
                   "fontSize": 12,
                   "offsetX": 0,
-                  "offsetY": 0,
+                  "offsetY": 16,
                   "textAlign": "center",
                   "textBaseline": "middle"
                 }
               }
             },
+            "filterData": {
+              "id": "byRefId",
+              "options": "A"
+            },
             "location": {
-              "mode": "auto",
-              "source": "geohash"
+              "mode": "lookup"
             },
             "name": "Layer 1",
             "tooltip": true,
@@ -672,13 +252,16 @@
             "uid": "vm-metrics"
           },
           "editorMode": "code",
-          "expr": "avg(dns_server_lookup_duration_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}) by (country_code)",
-          "legendFormat": "{{country_code}}",
-          "range": true,
+          "exemplar": false,
+          "expr": "avg by (country_code) (\n  avg_over_time(\n    dns_server_lookup_duration_ms_sum{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\"\n    }[$__range]\n  )\n  /\n  avg_over_time(\n    dns_server_lookup_duration_ms_count{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\"\n    }[$__range]\n  )\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{dns_server}}",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Global DNS Response Time Distribution",
+      "title": "Average DNS Resolution Time by Country",
       "type": "geomap"
     },
     {
@@ -687,11 +270,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 9
       },
-      "id": 12,
+      "id": 4,
       "panels": [],
-      "title": "Provider Analysis",
+      "title": "DNS Poisoning Detection",
       "type": "row"
     },
     {
@@ -699,6 +282,298 @@
         "type": "prometheus",
         "uid": "vm-metrics"
       },
+      "description": "This panel shows DNS response inconsistencies across different locations over time. \n\nThe graph only shows data points when inconsistencies are detected:\n- Visible lines indicate different DNS responses being received for the same endpoint\n- No visible line means all responses are consistent\n- Each line represents a country/endpoint combination with inconsistent responses\n\nUsage:\n- Any visible line indicates potential DNS poisoning\n- The presence of a line is more important than its value\n- Click on any visible point to investigate details in the table below\n- Use the time range selector to zoom into periods with visible inconsistencies\n\nWhen inconsistencies are detected:\n1. Note the affected Country/ISP combination\n2. Use the Bitping API to verify actual IP responses:\n   curl -X GET \"https://api.bitping.com/v1/dns\" \\\n   -H \"Authorization: Bearer YOUR_API_KEY\" \\\n   -d \"country=COUNTRY_CODE\" \\\n   -d \"isp=ISP_NAME\" \\\n   -d \"endpoint=DOMAIN\"\n3. Compare the API results with expected DNS responses\n\nFor more information on the Bitping API: https://help.bitping.com/help/customers/api\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "RU - jup.ag"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Name",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm-metrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max by(country_code, endpoint) (\n  dns_record_hash{\n    endpoint=~\"$endpoint\", \n    country_code=~\"$country\",\n    isp=~\"$isp\",\n    record_type=\"ip\"\n  }\n) \n- \nmin by(country_code,endpoint) (\n  dns_record_hash{\n    endpoint=~\"$endpoint\",\n    record_type=\"ip\"\n  }\n) > 0",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{country_code}} - {{endpoint}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "IP Record Hash Inconsistencies by Country",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fe26t540b4lc0e"
+      },
+      "description": "This table shows the raw DNS response data, helping investigate inconsistencies detected in the graph above.\n\nColumns:\n- Time: When the DNS response was received\n- Endpoint: The domain being queried\n- Country/City: Location of the query\n- ISP: Internet Service Provider\n- DNS Server: The server providing the response\n- Hash Value: Unique hash of the DNS response\n\nUsage:\n- When you spot a spike in the graph above, use this table to:\n  1. Identify which locations received different responses\n  2. Compare hash values to spot inconsistencies\n  3. Check which DNS servers provided divergent responses\n  4. Filter columns to focus on specific locations or providers\n\nInvestigation Steps:\n1. Filter table to show affected Country/ISP\n2. Note the timestamp and endpoint\n3. Use the Bitping API to verify DNS responses:\n   GET https://api.bitping.com/v1/dns\n   Parameters:\n   - country: from table\n   - isp: from table\n   - endpoint: from table\n4. Compare API results with table data to confirm poisoning\n\nFor more info about the Bitping API: https://help.bitping.com/help/customers/api\n\nThe table automatically updates based on the selected time range in the graph.\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": false
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Record Hash"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlBl"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "applyToRow": true,
+                  "type": "color-background"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 16,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "DNS Server"
+          }
+        ]
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "last_over_time(\n  dns_record_hash{\n    endpoint=~\"$endpoint\", \n    country_code=~\"$country\",\n    isp=~\"$isp\",\n    record_type=\"ip\"\n  }[$__range]\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "DNS Poisoning Debug Inspector",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "__name__": true,
+              "continent": true,
+              "instance": true,
+              "job": true,
+              "os": true,
+              "record_type": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "Value": 12,
+              "__name__": 6,
+              "city": 3,
+              "continent": 7,
+              "country_code": 2,
+              "dns_server": 5,
+              "endpoint": 1,
+              "instance": 8,
+              "isp": 4,
+              "job": 9,
+              "os": 10,
+              "record_type": 11
+            },
+            "renameByName": {
+              "Value": "Record Hash",
+              "city": "City",
+              "country_code": "Country Code",
+              "dns_server": "DNS Server",
+              "endpoint": "Endpoint",
+              "isp": "ISP"
+            }
+          }
+        },
+        {
+          "disabled": true,
+          "id": "limit",
+          "options": {
+            "limitField": "1000"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 7,
+      "panels": [],
+      "title": "Record Type Analysis",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm-metrics"
+      },
+      "description": "This panel shows the average number of DNS records returned for each endpoint.\n\nTypical values:\n- 2: Both IPv4 and IPv6 records\n- 1: Single record (IPv4 or IPv6)\n- >2: Multiple records (load balancing/round-robin)\n- <1: Potential resolution issues\n\nMonitor for unexpected changes in record counts which could indicate DNS configuration changes or issues.\n",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -728,7 +603,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -752,16 +627,348 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 7,
+        "w": 24,
         "x": 0,
-        "y": 37
+        "y": 23
       },
-      "id": 13,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm-metrics"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "avg by(record_type, endpoint) (\n  avg_over_time(\n    dns_records_count{\n      continent=~\"$continent\", \n      country_code=~\"$country\", \n      city=~\"$city\", \n      isp=~\"$isp\", \n      endpoint=~\"$endpoint\"\n    }[$__rate_interval]\n  )\n)",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "{{record_type}} - {{endpoint}}",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Number of DNS Records Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm-metrics"
+      },
+      "description": "DNS Server Response Times (95th Percentile)\n\nShows average response times for different DNS servers:\n- <50ms: Excellent response time\n- 50-100ms: Acceptable response time\n- >100ms: Poor response time\n\nThe 95th percentile indicates the worst-case performance excluding extreme outliers.\nSorted from slowest to fastest servers.\n\nNote: Response times are affected by:\n- Geographic distance to server\n- Network conditions\n- Server load\n- ISP routing",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 9,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm-metrics"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sort_desc(\n  avg by (dns_server) (\n    avg_over_time(\n      dns_server_lookup_duration_ms{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        quantile=\"0.95\"\n      }[$__rate_interval]\n    )\n  )\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{dns_server}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "P95 DNS Server Response Times",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm-metrics"
+      },
+      "description": "DNS Resolution Time by ISP and Country (95th Percentile)\n\nShows the average DNS lookup duration for different ISP/Country combinations:\n- <50ms: Excellent performance\n- 50-150ms: Acceptable performance\n- >150ms: Poor performance\n\nSorted from slowest to fastest, helping identify:\n- ISPs with DNS performance issues\n- Regional DNS resolution patterns\n- Potential network bottlenecks\n\nNote: Higher values might indicate:\n- Network congestion\n- Poor ISP DNS infrastructure\n- Geographic distance from DNS servers\n- DNS server performance issues",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 15,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "vm-metrics"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sort_desc(\n  avg by (isp, country_code) (\n    avg_over_time(\n      dns_server_lookup_duration_ms{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\",\n        quantile=\"0.95\"\n      }[$__rate_interval]\n    )\n  )\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{isp}} - {{dns_server}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "P95 DNS Server Response Times by ISP",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 12,
+      "panels": [],
+      "title": "Provider Analysis",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "vm-metrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds",
+            "seriesBy": "max"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": false,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 100,
+            "axisSoftMin": 50,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byValue",
+              "options": {
+                "op": "gte",
+                "reducer": "range",
+                "value": 99
+              }
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds",
+                  "seriesBy": "max"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 39
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max",
+            "mean"
+          ],
+          "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
@@ -778,7 +985,10 @@
             "uid": "vm-metrics"
           },
           "editorMode": "code",
-          "expr": "sum by (isp) (dns_lookup_success_total{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"})",
+          "exemplar": false,
+          "expr": "100 * (\n  avg by(isp) (\n    last_over_time(\n      increase(\n        dns_lookup_success_total{\n          continent=~\"$continent\",\n          country_code=~\"$country\",\n          city=~\"$city\",\n          isp=~\"$isp\",\n          endpoint=~\"$endpoint\"\n        }[$__rate_interval]\n      )[$__rate_interval:]\n    )\n  )\n  /\n  avg by(isp) (\n    last_over_time(\n      increase(\n        dns_lookup_total{\n          continent=~\"$continent\",\n          country_code=~\"$country\",\n          city=~\"$city\",\n          isp=~\"$isp\",\n          endpoint=~\"$endpoint\"\n        }[$__rate_interval]\n      )[$__rate_interval:]\n    )\n  )\n)",
+          "format": "time_series",
+          "instant": false,
           "legendFormat": "{{isp}}",
           "range": true,
           "refId": "A"
@@ -792,38 +1002,70 @@
         "type": "prometheus",
         "uid": "vm-metrics"
       },
+      "description": "DNS Lookup Failures by ISP\n\nShows the number of failed DNS lookups grouped by:\n- ISP\n- Country\n- Endpoint\n\nHigher values indicate:\n- DNS server issues\n- Network connectivity problems\n- Configuration errors\n\nUse this panel alongside the success rate panel to identify problematic providers.\n",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": true,
           "mappings": [],
+          "max": -3,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "yellow",
                 "value": null
               },
               {
-                "color": "red",
-                "value": 80
+                "color": "light-yellow",
+                "value": 5
+              },
+              {
+                "color": "light-orange",
+                "value": 20
+              },
+              {
+                "color": "orange",
+                "value": 30
+              },
+              {
+                "color": "semi-dark-orange",
+                "value": 40
+              },
+              {
+                "color": "dark-orange",
+                "value": 50
+              },
+              {
+                "color": "dark-red",
+                "value": 60
               }
             ]
           },
           "unit": "none"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total Errors"
+            },
+            "properties": []
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 37
+        "y": 39
       },
       "id": 14,
       "options": {
-        "displayMode": "basic",
+        "displayMode": "gradient",
         "legend": {
           "calcs": [],
           "displayMode": "list",
@@ -831,13 +1073,13 @@
           "showLegend": false
         },
         "maxVizHeight": 300,
-        "minVizHeight": 10,
-        "minVizWidth": 0,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
         "namePlacement": "auto",
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -853,11 +1095,18 @@
             "type": "prometheus",
             "uid": "vm-metrics"
           },
+          "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum by (isp) (rate(dns_lookup_failures_total{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",dns_server=~\"$dns_server\"}[5m]))",
-          "legendFormat": "{{isp}}",
-          "range": true,
-          "refId": "A"
+          "exemplar": false,
+          "expr": "sort_desc(\n  sum by(isp, country_code) (\n    increase(\n      dns_lookup_error_total{\n        continent=~\"$continent\", \n        country_code=~\"$country\", \n        city=~\"$city\", \n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n)",
+          "format": "time_series",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "{{country_code}} - {{isp}}",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
         }
       ],
       "title": "DNS Failures by ISP",
@@ -901,8 +1150,12 @@
       {
         "allValue": ".*",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
@@ -980,126 +1233,53 @@
       {
         "allValue": ".*",
         "current": {
-          "text": "All",
-          "value": "$__all"
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "vm-metrics"
-        },
-        "definition": "label_values(dns_server)",
+        "definition": "label_values(endpoint)",
         "includeAll": true,
-        "label": "DNS Server",
-        "multi": true,
-        "name": "dns_server",
-        "options": [],
-        "query": {
-          "query": "label_values(dns_server)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "vm-metrics"
-        },
-        "definition": "label_values(residential)",
-        "includeAll": true,
-        "label": "Residential",
-        "multi": true,
-        "name": "residential",
-        "options": [],
-        "query": {
-          "query": "label_values(residential)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "vm-metrics"
-        },
-        "definition": "label_values(mobile)",
-        "includeAll": true,
-        "label": "Mobile",
-        "multi": true,
-        "name": "mobile",
-        "options": [],
-        "query": {
-          "query": "label_values(mobile)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "vm-metrics"
-        },
-        "definition": "label_values(proxy)",
-        "includeAll": true,
-        "label": "Proxy",
-        "multi": true,
-        "name": "proxy",
-        "options": [],
-        "query": {
-          "query": "label_values(proxy)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "current": {
-          "text": "",
-          "value": ""
-        },
         "label": "Endpoint",
+        "multi": true,
         "name": "endpoint",
         "options": [],
-        "query": "",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(endpoint)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 1,
         "regex": "",
         "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "fe26t540b4lc0e"
+        },
+        "filters": [
+          {
+            "key": "endpoint",
+            "operator": "=",
+            "value": "grpc.bitping.com"
+          }
+        ],
+        "name": "Filters",
+        "type": "adhoc"
       }
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Enhanced DNS Monitoring Dashboard",
   "uid": "dns-monitoring-enhanced",
-  "version": 2,
+  "version": 98,
   "weekStart": ""
 }

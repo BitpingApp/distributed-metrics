@@ -3,6 +3,7 @@ use crate::config::HlsConfig;
 use crate::types::*;
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::{collections::HashMap, str::FromStr};
 use tracing::{error, warn};
@@ -195,7 +196,7 @@ fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorE
             .node_info
             .ok_or_else(|| CollectorErrors::MissingNodeInfo(endpoint.clone()))?;
 
-        let labels = HashMap::from_iter([
+        let mut labels = HashMap::from_iter([
             ("country_code", node_info.country_code.clone()),
             ("continent", node_info.continent_code.clone()),
             ("city", node_info.city.clone()),
@@ -203,6 +204,16 @@ fn handle_response(&self, response: PerformHlsResponse) -> Result<(), CollectorE
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+
+        if let Ok(v) = geohash::encode(
+            Coord {
+                x: node_info.lat,
+                y: node_info.lon,
+            },
+            5,
+        ) {
+            labels.insert("geohash", v);
+        }
 
         match response.results.first() {
             Some(result) => {

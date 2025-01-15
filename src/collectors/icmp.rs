@@ -7,6 +7,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -173,6 +174,16 @@ impl Collector for IcmpCollector {
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+
+        if let Ok(v) = geohash::encode(
+            Coord {
+                x: node_info.lat,
+                y: node_info.lon,
+            },
+            5,
+        ) {
+            labels.insert("geohash", v);
+        }
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
