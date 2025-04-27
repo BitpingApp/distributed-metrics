@@ -1,10 +1,17 @@
+##################
+#
+# NOTE: cargo-dist seems unmaintained, been picked up here:
+# https://github.com/astral-sh/cargo-dist/releases/tag/v0.28.4
+#
+##################
+
 [workspace]
 members = ["cargo:."]
 
 # Config for 'dist'
 [dist]
 # The preferred dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.27.0"
+cargo-dist-version = "0.28.4"
 # CI backends to support
 ci = "github"
 # The installers to generate for each app
@@ -25,5 +32,6 @@ post-announce-jobs = ["./docker-publish"]
 
 [dist.github-custom-runners]
 # Linux x86_64 builds
-x86_64-unknown-linux-gnu = "ubuntu-22.04"
-x86_64-unknown-linux-musl = "ubuntu-22.04"
+x86_64-unknown-linux-gnu = "ubuntu-24.04"
+x86_64-unknown-linux-musl = "ubuntu-24.04"
+aarch64-unknown-linux-gnu = "ubuntu-24.04"
