@@ -4,6 +4,7 @@ use thiserror::Error;
 
 pub mod dns;
 pub mod hls;
+pub mod http;
 pub mod icmp;
 
 #[derive(Error, Debug)]
@@ -46,7 +47,7 @@ pub trait Collector {
 
     /// Handles any errors that occur during collection
     fn handle_errors(&self, error: CollectorErrors) -> Result<()> {
-        tracing::error!(?error, "Failed to handle error");
+        tracing::error!(%error, "Failed to handle error");
         Ok(())
     }
 

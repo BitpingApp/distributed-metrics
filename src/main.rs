@@ -1,4 +1,5 @@
 use crate::config::Conf;
+use collectors::http::HttpCollector;
 use collectors::icmp::IcmpCollector;
 use collectors::{dns, hls, Collector};
 use color_eyre::eyre::Result;
@@ -127,6 +128,16 @@ async fn spawn_collectors(config: &'static Conf, join_set: &mut JoinSet<()>) -> 
                         let collector = hls::HlsCollector::new(config);
                         if let Err(e) = collector.run().await {
                             error!("HLS collector failed: {}", e);
+                        }
+                    }
+                });
+            }
+            MetricType::Http(config) => {
+                join_set.spawn(async move {
+                    loop {
+                        let collector = HttpCollector::new(config);
+                        if let Err(e) = collector.run().await {
+                            error!("HTTP collector failed: {}", e);
                         }
                     }
                 });

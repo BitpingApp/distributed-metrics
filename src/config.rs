@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use regress::Regex;
 use serde::Deserialize;
 
 use eyre::{Context, Result};
@@ -7,6 +8,7 @@ use figment::{
     providers::{Env, Format, Yaml},
     Figment,
 };
+use serde_json::Value;
 use strum::{AsRefStr, EnumString};
 
 // Configuration structs
@@ -36,6 +38,31 @@ pub enum MetricType {
     Dns(DnsConfig),
     Icmp(IcmpConfig),
     Hls(HlsConfig),
+    Http(HttpConfig),
+}
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Deserialize, AsRefStr, Clone, Debug)]
+pub enum HttpMethod {
+    GET,
+    POST,
+    PUT,
+    PATCH,
+    OPTIONS,
+    DELETE,
+    HEAD,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct HttpConfig {
+    #[serde(flatten)]
+    pub common_config: MetricConfig,
+
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
+    pub method: HttpMethod,
+    pub body: Option<String>,
+    pub regex: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -55,6 +82,7 @@ pub struct DnsConfig {
     pub lookup_type: LookupTypes,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Deserialize, AsRefStr, Clone, Debug, Default)]
 pub enum LookupTypes {
     #[default]
