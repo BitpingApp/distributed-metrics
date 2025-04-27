@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "grafana-worldmap-panel",
-        "uid": "vm-metrics"
+        "uid": "${datasource}"
       },
       "description": "This map shows the average ICMP ping latency across different countries.\n\nColor Scale:\n🟢 0-50ms: Excellent (Local/Regional)\n🟡 50-150ms: Good (Cross-Region)\n🟠 150-300ms: Degraded (Cross-Continental)\n🔴 >300ms: Poor (Requires Investigation)\n\nValues represent:\n- Average maximum latency per country\n- Higher values may indicate:\n  • Network congestion\n  • Suboptimal routing\n  • Geographic distance\n  • Infrastructure limitations\n\nNote: Hover over countries to see exact latency values. Gray countries indicate no data available.\n\nUse this map to:\n- Identify regions with latency issues\n- Plan infrastructure improvements\n- Monitor global network performance\n- Compare performance across regions\n",
       "fieldConfig": {
@@ -192,7 +192,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "vm-metrics"
+            "uid": "${datasource}"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -1858,6 +1858,24 @@
   "templating": {
     "list": [
       {
+        "current": {
+          "selected": true,
+          "text": "vm-metrics",
+          "value": "vm-metrics"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
         "allValue": ".*",
         "current": {
           "text": [
@@ -1869,7 +1887,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio, continent)",
         "includeAll": true,
@@ -1894,7 +1912,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\"}, country_code)",
         "includeAll": true,
@@ -1919,7 +1937,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\"}, city)",
         "includeAll": true,
@@ -1948,7 +1966,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\", city=~\"$city\"}, isp)",
         "includeAll": true,
@@ -1977,7 +1995,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio, endpoint)",
         "includeAll": true,
@@ -2006,7 +2024,7 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "definition": "label_values(icmp_ping_success_ratio, ip_address)",
         "includeAll": true,
@@ -2026,7 +2044,7 @@
       {
         "datasource": {
           "type": "prometheus",
-          "uid": "vm-metrics"
+          "uid": "${datasource}"
         },
         "filters": [],
         "name": "Filters",
