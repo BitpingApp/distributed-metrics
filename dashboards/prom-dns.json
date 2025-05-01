@@ -1119,7 +1119,7 @@
       {
         "current": {
           "text": "grafanacloud-firaenix-prom",
-          "value": "grafanacloud-prom"
+          "value": "${datasource}"
         },
         "includeAll": false,
         "name": "datasource",

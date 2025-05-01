@@ -1224,7 +1224,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "${datasource}"
       },
       "description": "Shows the percentage of ICMP ping packets lost per country over the selected time period.\n\nCalculation:\n- (1 - received_packets/sent_packets) * 100\n- Averaged across all nodes in each country\n- Time Range: $__range\n\nThresholds:\n🟢 0-0.1%: Excellent connectivity\n🟡 0.1-1%: Minor packet loss\n🟠 1-5%: Significant packet loss\n🔴 >5%: Critical packet loss\n\nHigher percentages indicate:\n- Network congestion\n- Route instability\n- Infrastructure issues\n- Potential connectivity problems\n\nNote: Countries are sorted by worst to best performance. Empty or missing countries indicate no data or no packet loss.\n",
       "fieldConfig": {
@@ -1338,7 +1338,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1549,7 +1549,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1848,7 +1848,7 @@
       {
         "current": {
           "text": "grafanacloud-firaenix-prom",
-          "value": "grafanacloud-prom"
+          "value": "${datasource}"
         },
         "includeAll": false,
         "name": "datasource",
