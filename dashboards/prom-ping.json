@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 17,
   "links": [],
   "panels": [
     {
@@ -60,8 +60,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -187,7 +186,7 @@
           "zoom": 1
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -197,7 +196,7 @@
           "disableTextWrap": false,
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by(country_code) (\n  last_over_time(\n  icmp_ping_duration_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\",\n    ip_address=~\"$ip\",\n    quantile=\"0.95\"\n  })\n)",
+          "expr": "avg by(country_code) (\n  last_over_time(\n  icmp_ping_duration_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\",\n    ip_address=~\"$ip\",\n    quantile=\"0.95\"\n  }[$__rate_interval])\n)",
           "format": "table",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -261,8 +260,7 @@
             "mode": "percentage",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "#EAB839",
@@ -393,7 +391,7 @@
           "zoom": 1
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -457,8 +455,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "orange",
@@ -502,7 +499,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -536,8 +533,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "yellow",
@@ -581,7 +577,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -652,8 +648,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "transparent",
-                "value": null
+                "color": "transparent"
               }
             ]
           },
@@ -730,11 +725,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -839,8 +835,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "orange",
@@ -879,11 +874,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -950,8 +946,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -990,11 +985,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "desc"
         }
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -1047,8 +1043,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1080,8 +1075,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red",
-                      "value": null
+                      "color": "red"
                     },
                     {
                       "color": "yellow",
@@ -1119,8 +1113,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "yellow",
@@ -1156,7 +1149,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -1231,7 +1224,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "fe26t540b4lc0e"
+        "uid": "grafanacloud-prom"
       },
       "description": "Shows the percentage of ICMP ping packets lost per country over the selected time period.\n\nCalculation:\n- (1 - received_packets/sent_packets) * 100\n- Averaged across all nodes in each country\n- Time Range: $__range\n\nThresholds:\n🟢 0-0.1%: Excellent connectivity\n🟡 0.1-1%: Minor packet loss\n🟠 1-5%: Significant packet loss\n🔴 >5%: Critical packet loss\n\nHigher percentages indicate:\n- Network congestion\n- Route instability\n- Infrastructure issues\n- Potential connectivity problems\n\nNote: Countries are sorted by worst to best performance. Empty or missing countries indicate no data or no packet loss.\n",
       "fieldConfig": {
@@ -1265,8 +1258,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "#EAB839",
@@ -1307,18 +1299,19 @@
         "showValue": "auto",
         "stacking": "none",
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         },
         "xTickLabelRotation": 0,
         "xTickLabelSpacing": 0
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sort_desc(\n  100 * (1 - \n    avg by(country_code) (\n      increase(icmp_ping_packets_received[$__range])\n      /\n      increase(icmp_ping_packets_sent[$__range])\n    )\n  ) > 0\n)",
+          "expr": "sort_desc(\n  100 * (\n    1 - (\n      sum by(country_code) (icmp_ping_packets_received)\n      /\n      sum by(country_code) (icmp_ping_packets_sent)\n    )\n  )\n  and\n  100 * (\n    1 - (\n      sum by(country_code) (icmp_ping_packets_received)\n      /\n      sum by(country_code) (icmp_ping_packets_sent)\n    )\n  ) > 0\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -1344,7 +1337,8 @@
     },
     {
       "datasource": {
-        "uid": "fe26t540b4lc0e"
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
       },
       "fieldConfig": {
         "defaults": {
@@ -1363,8 +1357,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -1386,8 +1379,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red",
-                      "value": null
+                      "color": "red"
                     },
                     {
                       "color": "#EAB839",
@@ -1432,8 +1424,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "yellow",
@@ -1470,12 +1461,12 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) if \ncount by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2\n",
+          "expr": "avg by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) \nand on(country_code, city) \n(\n  count by(country_code, city) (\n    last_over_time(\n      icmp_ping_latency_avg_ms{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\",\n        ip_address=~\"$ip\"\n      }[$__range]\n    )\n  ) > 2\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -1489,7 +1480,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by(country_code, city) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) if \ncount by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2",
+          "expr": "avg by(country_code, city) (\n  last_over_time(\n    icmp_ping_success_ratio{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) \nand on(country_code, city) \n(\n  count by(country_code, city) (\n    last_over_time(\n      icmp_ping_latency_avg_ms{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\",\n        ip_address=~\"$ip\"\n      }[$__range]\n    )\n  ) > 2\n)\n",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1557,7 +1548,8 @@
     },
     {
       "datasource": {
-        "uid": "fe26t540b4lc0e"
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
       },
       "fieldConfig": {
         "defaults": {
@@ -1576,8 +1568,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -1599,8 +1590,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "red",
-                      "value": null
+                      "color": "red"
                     },
                     {
                       "color": "#EAB839",
@@ -1645,8 +1635,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "yellow",
@@ -1683,12 +1672,12 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) if \ncount by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2",
+          "expr": "avg by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) \nand on(country_code, isp) \n(\n  count by(country_code, isp) (\n    last_over_time(\n      icmp_ping_latency_avg_ms{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\",\n        ip_address=~\"$ip\"\n      }[$__range]\n    )\n  ) > 2\n)\n",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -1702,7 +1691,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg by(country_code, isp) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) if \ncount by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2\n",
+          "expr": "avg by(country_code, isp) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) \nand on(country_code, isp) \n(count by(country_code, isp) (last_over_time(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) > 2)\n",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -1782,8 +1771,7 @@
             "mode": "percentage",
             "steps": [
               {
-                "color": "red",
-                "value": null
+                "color": "red"
               },
               {
                 "color": "dark-orange",
@@ -1830,7 +1818,7 @@
         "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "11.3.0",
+      "pluginVersion": "12.0.0-86898",
       "targets": [
         {
           "datasource": {
@@ -1850,7 +1838,7 @@
   ],
   "preload": false,
   "refresh": "",
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "tags": [
     "monitoring",
     "network"
@@ -1859,31 +1847,22 @@
     "list": [
       {
         "current": {
-          "selected": true,
-          "text": "${datasource}",
-          "value": "${datasource}"
+          "text": "grafanacloud-firaenix-prom",
+          "value": "grafanacloud-prom"
         },
-        "hide": 0,
         "includeAll": false,
-        "multi": false,
         "name": "datasource",
         "options": [],
         "query": "prometheus",
-        "queryValue": "",
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
         "type": "datasource"
       },
       {
         "allValue": ".*",
         "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -1957,12 +1936,8 @@
       {
         "allValue": ".*",
         "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -1986,12 +1961,8 @@
       {
         "allValue": ".*",
         "current": {
-          "text": [
-            "jup.ag"
-          ],
-          "value": [
-            "jup.ag"
-          ]
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -2015,12 +1986,8 @@
       {
         "allValue": ".*",
         "current": {
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -2042,6 +2009,7 @@
         "type": "query"
       },
       {
+        "baseFilters": [],
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
@@ -2053,13 +2021,12 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Global Ping Statistics Breakdown",
   "uid": "global-network-monitoring",
-  "version": 72,
-  "weekStart": ""
+  "version": 6
 }
