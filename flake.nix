@@ -30,6 +30,22 @@
       };
   in
   {
+    packages = forAllSystems (
+      system:
+      let
+        pkgs = pkgsFor system;
+        rustToolchain = pkgs.rust-bin.stable.latest.default;
+      in
+      {
+        default = pkgs.rustPlatform.buildRustPackage {
+          pname = "distributed-metrics";
+          version = "1.1.0";
+          src = ./.;
+          cargoHash = "sha256-UWW8mzWHc2UqOjmUWVnrn1/WvzZbB3Nfis55prBedf8=";
+        };
+      }
+    );
+
     devShells = forAllSystems (
       system:
       let
@@ -44,15 +60,10 @@
       in
       {
         default = pkgs.mkShell {
-          buildInputs =
-            [
+          buildInputs = [
               rustToolchain
               pkgs.cargo-audit
               pkgs.cargo-watch
-            ]
-            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-              pkgs.darwin.apple_sdk.frameworks.Security
-              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
             ];
 
           env = {
