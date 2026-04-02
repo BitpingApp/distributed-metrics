@@ -12,12 +12,12 @@ use poem::EndpointExt;
 use poem::{get, handler, listener::TcpListener, Route, Server};
 use progenitor::generate_api;
 use std::sync::LazyLock;
-use tokio::join;
 use tokio::task::JoinSet;
 use tracing::{error, info};
 
 mod collectors;
 mod config;
+mod remote_write;
 
 generate_api!(spec = "./api-spec.json", interface = Builder);
 
@@ -81,20 +81,43 @@ async fn main() -> Result<()> {
         .install_recorder()
         .expect("failed to install recorder");
 
-    let app = Route::new()
-        .at("/metrics", get(render_prom))
-        .with(AddData::new(handle));
-
-    let http_server = Server::new(TcpListener::bind("[::]:3000")).run(app);
-
     // Start collection tasks
     let mut join_set = JoinSet::new();
 
+    // Conditionally start the /metrics scrape endpoint
+    if CONFIG.global_config.scrape_enabled {
+        let scrape_handle = handle.clone();
+        let app = Route::new()
+            .at("/metrics", get(render_prom))
+            .with(AddData::new(scrape_handle));
+        join_set.spawn(async move {
+            if let Err(e) = Server::new(TcpListener::bind("[::]:3000"))
+                .run(app)
+                .await
+            {
+                error!("HTTP server failed: {}", e);
+                std::process::exit(1);
+            }
+        });
+        info!("Scrape endpoint enabled on :3000/metrics");
+    }
+
+    // Start remote write senders
+    if !CONFIG.global_config.remote_write.is_empty() {
+        let sender = remote_write::RemoteWriteSender::new(
+            CONFIG.global_config.remote_write.clone(),
+            handle.clone(),
+        );
+        sender.spawn_all(&mut join_set);
+        info!(
+            count = CONFIG.global_config.remote_write.len(),
+            "Remote write destinations started"
+        );
+    }
+
     spawn_collectors(&CONFIG, &mut join_set).await?;
 
-    let (rs, _) = join!(http_server, join_set.join_all());
-
-    rs?;
+    join_set.join_all().await;
 
     Ok(())
 }

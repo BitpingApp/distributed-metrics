@@ -25,10 +25,40 @@ pub struct GlobalConfig {
     #[serde(with = "humantime_serde")]
     #[serde(default = "default_metric_clear_timeout")]
     pub metric_clear_timeout: Duration,
+
+    /// Enable the /metrics scrape endpoint (default: true)
+    #[serde(default = "default_true")]
+    pub scrape_enabled: bool,
+
+    /// Remote write destinations
+    #[serde(default)]
+    pub remote_write: Vec<RemoteWriteDestination>,
 }
 
 fn default_metric_clear_timeout() -> Duration {
     Duration::from_secs(10)
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_remote_write_interval() -> Duration {
+    Duration::from_secs(15)
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct RemoteWriteDestination {
+    pub name: String,
+    pub url: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    /// Custom HTTP headers (e.g., bearer tokens, API keys).
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_remote_write_interval")]
+    pub interval: Duration,
 }
 
 #[derive(Deserialize, AsRefStr, Clone, Debug)]
