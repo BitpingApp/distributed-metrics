@@ -20,7 +20,7 @@ You can also specify the network type of the reporting device such as if its a R
    ```bash
    distributed-metrics
    ```
-Metrics will be available at `http://localhost:3000/metrics` in Prometheus format.
+Metrics will be available at `http://localhost:3000/metrics` in Prometheus format. You can also push metrics to remote endpoints via [remote write](#remote-write).
 
 ## Installation
 
@@ -66,6 +66,22 @@ services:
 Run:
 ```bash
 docker compose up -d
+```
+
+#### Remote write only (no scrape endpoint)
+
+If you only need remote write, you can skip exposing port 3000:
+
+```yaml
+version: '3'
+services:
+  metrics:
+    image: bitping/distributed-metrics
+    environment:
+      - BITPING_API_KEY=your_api_key
+    volumes:
+      - ./Metrics.yaml:/app/Metrics.yaml
+    restart: unless-stopped
 ```
 
 ## Supported Protocols
@@ -216,10 +232,52 @@ Labels:
 
 ```yaml
 metric_clear_timeout: 10s # How long to keep metrics after a scrape has occured - prevents timeouts on scraping as cardinality can be high
+scrape_enabled: true       # Enable the /metrics scrape endpoint (default: true)
 
 metrics:
   # Protocol configurations as shown above
 ```
+
+### Remote Write
+
+Push metrics to one or more Prometheus-compatible remote write endpoints (Grafana Cloud, VictoriaMetrics, Mimir, Cortex, Thanos, etc.) instead of or in addition to the scrape endpoint.
+
+```yaml
+remote_write:
+  - name: grafana-cloud
+    url: https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
+    username: "123456"
+    password: "glc_your_api_key_here"
+    interval: 15s
+
+  - name: local-victoriametrics
+    url: http://victoriametrics:8428/api/v1/write
+    interval: 10s
+    headers:
+      Authorization: "Bearer my-token"
+```
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `name` | Yes | — | Identifier for logging |
+| `url` | Yes | — | Remote write endpoint URL |
+| `username` | No | — | Basic auth username |
+| `password` | No | — | Basic auth password |
+| `headers` | No | `{}` | Custom HTTP headers (e.g., bearer tokens) |
+| `interval` | No | `15s` | Push interval |
+| `timeout` | No | `30s` | HTTP request timeout per push |
+
+To disable the scrape endpoint and use only remote write:
+
+```yaml
+scrape_enabled: false
+
+remote_write:
+  - name: my-destination
+    url: https://my-endpoint/api/v1/write
+```
+
+On consecutive push failures, the sender backs off exponentially (base interval * 2^failures, capped at 5 minutes) and resets on success.
 
 ### Network Selection Parameters
 
@@ -242,6 +300,15 @@ All metrics support these base configuration options:
 - `endpoint`: Target hostname or URL
 - `frequency`: How often to collect metrics (e.g., "1s", "15s", "1m")
 - `network`: Network selection criteria (see above)
+
+## Testing
+
+```bash
+cargo test                                            # Unit tests only
+cargo test --test remote_write -- --ignored           # Integration tests (requires Docker/Podman)
+```
+
+Integration tests run the real remote write code path against both VictoriaMetrics and Prometheus containers (via [testcontainers](https://crates.io/crates/testcontainers)). They verify that gauges, counters, and histograms push correctly and are queryable on both backends.
 
 ## Error Handling
 

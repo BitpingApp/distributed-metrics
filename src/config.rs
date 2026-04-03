@@ -1,6 +1,5 @@
 use std::{collections::HashMap, time::Duration};
 
-use regress::Regex;
 use serde::Deserialize;
 
 use eyre::{Context, Result};
@@ -8,7 +7,6 @@ use figment::{
     providers::{Env, Format, Yaml},
     Figment,
 };
-use serde_json::Value;
 use strum::{AsRefStr, EnumString};
 
 // Configuration structs
@@ -25,10 +23,47 @@ pub struct GlobalConfig {
     #[serde(with = "humantime_serde")]
     #[serde(default = "default_metric_clear_timeout")]
     pub metric_clear_timeout: Duration,
+
+    /// Enable the /metrics scrape endpoint (default: true)
+    #[serde(default = "default_true")]
+    pub scrape_enabled: bool,
+
+    /// Remote write destinations
+    #[serde(default)]
+    pub remote_write: Vec<RemoteWriteDestination>,
 }
 
 fn default_metric_clear_timeout() -> Duration {
     Duration::from_secs(10)
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_remote_write_interval() -> Duration {
+    Duration::from_secs(15)
+}
+
+fn default_remote_write_timeout() -> Duration {
+    Duration::from_secs(30)
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct RemoteWriteDestination {
+    pub name: String,
+    pub url: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    /// Custom HTTP headers (e.g., bearer tokens, API keys).
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_remote_write_interval")]
+    pub interval: Duration,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_remote_write_timeout")]
+    pub timeout: Duration,
 }
 
 #[derive(Deserialize, AsRefStr, Clone, Debug)]

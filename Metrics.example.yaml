@@ -1,5 +1,22 @@
 metric_clear_timeout: 1s
 
+# Scrape endpoint (default: true). Set to false if using remote write only.
+# scrape_enabled: false
+
+# Remote write destinations (optional). Push metrics to one or more
+# Prometheus-compatible endpoints instead of (or in addition to) scraping.
+# remote_write:
+#   - name: grafana-cloud
+#     url: https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push
+#     username: "123456"
+#     password: "glc_xxx..."
+#     interval: 15s
+#   - name: local-victoriametrics
+#     url: http://localhost:8428/api/v1/write
+#     interval: 10s
+#     headers:
+#       X-Custom-Header: "my-value"
+
 metrics:
   - type: dns
     endpoint: jup.ag
