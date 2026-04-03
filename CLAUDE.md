@@ -18,3 +18,7 @@ cargo watch -x run   # Hot-reload during development (inside dev shell)
 When `Cargo.toml` changes (version bump or dependency changes):
 - Update `version` in `flake.nix` to match `Cargo.toml`
 - Set `cargoHash` to `""` and rebuild to get the new hash from the error output, then update it
+
+## Rules
+
+- No unwraps allowed

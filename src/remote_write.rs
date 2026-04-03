@@ -93,7 +93,7 @@ impl RemoteWriteSender {
         }
     }
 
-    async fn push_once(
+    pub async fn push_once(
         dest: &RemoteWriteDestination,
         client: &reqwest::Client,
         text: &str,
@@ -130,7 +130,7 @@ impl RemoteWriteSender {
     }
 }
 
-fn parse_text_to_write_request(text: &str) -> Result<WriteRequest> {
+pub fn parse_text_to_write_request(text: &str) -> Result<WriteRequest> {
     let reader = std::io::BufReader::new(text.as_bytes());
     let scrape = prometheus_parse::Scrape::parse(reader.lines())
         .map_err(|e| eyre::eyre!("failed to parse prometheus text: {}", e))?;
@@ -273,7 +273,6 @@ c 3
         let wr = parse_text_to_write_request(text).unwrap();
         assert_eq!(wr.timeseries.len(), 3);
     }
-
 
     #[test]
     fn test_parse_histogram_buckets() {

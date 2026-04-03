@@ -1,5 +1,5 @@
 use super::{Collector, CollectorErrors};
-use crate::config::{HttpConfig, LookupTypes};
+use distributed_metrics::config::{HttpConfig, LookupTypes};
 use crate::types::{
     PerformHttpBodyConfiguration, PerformHttpBodyContinentCode, PerformHttpBodyCountryCode,
     PerformHttpBodyMobile, PerformHttpBodyProxy, PerformHttpBodyResidential, PerformHttpResponse,

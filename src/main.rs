@@ -1,9 +1,9 @@
-use crate::config::Conf;
 use collectors::http::HttpCollector;
 use collectors::icmp::IcmpCollector;
 use collectors::{dns, hls, Collector};
 use color_eyre::eyre::Result;
-use config::MetricType;
+use distributed_metrics::config::{Conf, MetricType};
+use distributed_metrics::remote_write;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use metrics_util::MetricKindMask;
 use poem::middleware::AddData;
@@ -16,8 +16,6 @@ use tokio::task::JoinSet;
 use tracing::{error, info};
 
 mod collectors;
-mod config;
-mod remote_write;
 
 generate_api!(spec = "./api-spec.json", interface = Builder);
 

@@ -1,7 +1,7 @@
 mod errors;
 
 use super::{Collector, CollectorErrors};
-use crate::config::{DnsConfig, LookupTypes};
+use distributed_metrics::config::{DnsConfig, LookupTypes};
 use crate::types::{
     PerformDnsBodyConfiguration, PerformDnsBodyConfigurationLookupTypesItem,
     PerformDnsBodyContinentCode, PerformDnsBodyCountryCode, PerformDnsBodyMobile,

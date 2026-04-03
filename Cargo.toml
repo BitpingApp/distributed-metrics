@@ -44,6 +44,9 @@ prometheus-reqwest-remote-write = "0.5"
 prometheus-parse = "0.2"
 chrono = "0.4"
 
+[dev-dependencies]
+testcontainers = { version = "0.27", features = ["http_wait"] }
+
 # The profile that 'dist' will build with
 [profile.dist]
 inherits = "release"

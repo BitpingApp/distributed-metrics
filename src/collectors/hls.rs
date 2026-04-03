@@ -1,5 +1,5 @@
 use super::{Collector, CollectorErrors};
-use crate::config::HlsConfig;
+use distributed_metrics::config::HlsConfig;
 use crate::types::*;
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;

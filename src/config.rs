@@ -1,6 +1,5 @@
 use std::{collections::HashMap, time::Duration};
 
-use regress::Regex;
 use serde::Deserialize;
 
 use eyre::{Context, Result};
@@ -8,7 +7,6 @@ use figment::{
     providers::{Env, Format, Yaml},
     Figment,
 };
-use serde_json::Value;
 use strum::{AsRefStr, EnumString};
 
 // Configuration structs
