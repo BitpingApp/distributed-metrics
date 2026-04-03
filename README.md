@@ -265,6 +265,7 @@ remote_write:
 | `password` | No | — | Basic auth password |
 | `headers` | No | `{}` | Custom HTTP headers (e.g., bearer tokens) |
 | `interval` | No | `15s` | Push interval |
+| `timeout` | No | `30s` | HTTP request timeout per push |
 
 To disable the scrape endpoint and use only remote write:
 
@@ -299,6 +300,15 @@ All metrics support these base configuration options:
 - `endpoint`: Target hostname or URL
 - `frequency`: How often to collect metrics (e.g., "1s", "15s", "1m")
 - `network`: Network selection criteria (see above)
+
+## Testing
+
+```bash
+cargo test                                            # Unit tests only
+cargo test --test remote_write -- --ignored           # Integration tests (requires Docker/Podman)
+```
+
+Integration tests run the real remote write code path against both VictoriaMetrics and Prometheus containers (via [testcontainers](https://crates.io/crates/testcontainers)). They verify that gauges, counters, and histograms push correctly and are queryable on both backends.
 
 ## Error Handling
 

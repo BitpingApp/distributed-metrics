@@ -6,6 +6,7 @@
 //! Requires Docker/Podman. Run with:
 //!   cargo test --test remote_write -- --ignored
 
+mod fault_injection;
 mod prometheus;
 mod victoriametrics;
 
@@ -41,6 +42,7 @@ impl RemoteWriteBackend {
             password: None,
             headers: HashMap::new(),
             interval: std::time::Duration::from_secs(15),
+            timeout: std::time::Duration::from_secs(30),
         }
     }
 

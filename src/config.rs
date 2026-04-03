@@ -45,6 +45,10 @@ fn default_remote_write_interval() -> Duration {
     Duration::from_secs(15)
 }
 
+fn default_remote_write_timeout() -> Duration {
+    Duration::from_secs(30)
+}
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct RemoteWriteDestination {
     pub name: String,
@@ -57,6 +61,9 @@ pub struct RemoteWriteDestination {
     #[serde(with = "humantime_serde")]
     #[serde(default = "default_remote_write_interval")]
     pub interval: Duration,
+    #[serde(with = "humantime_serde")]
+    #[serde(default = "default_remote_write_timeout")]
+    pub timeout: Duration,
 }
 
 #[derive(Deserialize, AsRefStr, Clone, Debug)]
