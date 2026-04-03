@@ -86,12 +86,34 @@ jobs:
           name: artifacts-plan-dist-manifest
           path: plan-dist-manifest.json
 
+  # Run tests before building release artifacts
+  test:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: "Install build dependencies (Linux)"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc g++
+      - name: "Rust Cache"
+        uses: "Swatinem/rust-cache@v2"
+        with:
+          "prefix-key": "v1-rust"
+          "shared-key": "test"
+          "cache-on-failure": "true"
+          "save-if": "${{ github.ref == 'refs/heads/master' }}"
+      - name: "Run tests"
+        run: cargo test
+
   # Build and packages all the platform-specific things
   build-local-artifacts:
     name: build-local-artifacts (${{ join(matrix.targets, ', ') }})
     # Let the initial task tell us to not run (currently very blunt)
     needs:
       - plan
+      - test
     if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') }}
     strategy:
       fail-fast: false
