@@ -64,6 +64,7 @@
               rustToolchain
               pkgs.cargo-audit
               pkgs.cargo-watch
+              pkgs.cargo-dist
             ];
 
           env = {
