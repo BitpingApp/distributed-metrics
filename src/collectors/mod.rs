@@ -13,8 +13,6 @@ pub enum CollectorErrors {
     Measurement { metric: String, reason: String },
     #[error("Request timeout after {0:?}")]
     Timeout(Duration),
-    #[error("Configuration error: {0}")]
-    Config(String),
     #[error("Failed to get node info for {0}")]
     MissingNodeInfo(String),
     #[error("Missing crucial data for {0} - {1}")]

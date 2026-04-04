@@ -80,8 +80,7 @@ impl RemoteWriteSender {
                 }
                 Err(e) => {
                     consecutive_failures = consecutive_failures.saturating_add(1);
-                    let next_backoff =
-                        calculate_backoff(base_interval, consecutive_failures);
+                    let next_backoff = calculate_backoff(base_interval, consecutive_failures);
                     warn!(
                         dest = %dest.name,
                         error = %e,
@@ -398,8 +397,14 @@ mod tests {
         // Assert
         assert_eq!(wr.timeseries.len(), 1);
         let ts = &wr.timeseries[0];
-        assert!(ts.labels.iter().any(|l| l.name == "__name__" && l.value == "my_gauge"));
-        assert!(ts.labels.iter().any(|l| l.name == "foo" && l.value == "bar"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "__name__" && l.value == "my_gauge"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "foo" && l.value == "bar"));
         assert_eq!(ts.samples[0].value, 42.0);
     }
 
@@ -448,10 +453,22 @@ mod tests {
         // Assert
         assert_eq!(wr.timeseries.len(), 1);
         let ts = &wr.timeseries[0];
-        assert!(ts.labels.iter().any(|l| l.name == "__name__" && l.value == "http_requests_total"));
-        assert!(ts.labels.iter().any(|l| l.name == "method" && l.value == "POST"));
-        assert!(ts.labels.iter().any(|l| l.name == "status" && l.value == "200"));
-        assert!(ts.labels.iter().any(|l| l.name == "path" && l.value == "/api"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "__name__" && l.value == "http_requests_total"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "method" && l.value == "POST"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "status" && l.value == "200"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "path" && l.value == "/api"));
         assert_eq!(ts.samples[0].value, 42.0);
     }
 
@@ -478,16 +495,28 @@ h_count 30
         // Assert — 3 buckets + h_sum + h_count = 5 timeseries
         assert_eq!(wr.timeseries.len(), 5);
 
-        let buckets: Vec<_> = wr.timeseries.iter()
-            .filter(|ts| ts.labels.iter().any(|l| l.name == "__name__" && l.value == "h_bucket"))
+        let buckets: Vec<_> = wr
+            .timeseries
+            .iter()
+            .filter(|ts| {
+                ts.labels
+                    .iter()
+                    .any(|l| l.name == "__name__" && l.value == "h_bucket")
+            })
             .collect();
         assert_eq!(buckets.len(), 3);
         for ts in &buckets {
             assert!(ts.labels.iter().any(|l| l.name == "le"));
         }
 
-        assert!(wr.timeseries.iter().any(|ts| ts.labels.iter().any(|l| l.name == "__name__" && l.value == "h_sum")));
-        assert!(wr.timeseries.iter().any(|ts| ts.labels.iter().any(|l| l.name == "__name__" && l.value == "h_count")));
+        assert!(wr.timeseries.iter().any(|ts| ts
+            .labels
+            .iter()
+            .any(|l| l.name == "__name__" && l.value == "h_sum")));
+        assert!(wr.timeseries.iter().any(|ts| ts
+            .labels
+            .iter()
+            .any(|l| l.name == "__name__" && l.value == "h_count")));
     }
 
     #[test]
@@ -508,11 +537,23 @@ h_count 5
         let wr = parse_text_to_write_request(text).expect("parse failed");
 
         // Assert
-        let buckets: Vec<_> = wr.timeseries.iter()
-            .filter(|ts| ts.labels.iter().any(|l| l.name == "__name__" && l.value == "h_bucket"))
+        let buckets: Vec<_> = wr
+            .timeseries
+            .iter()
+            .filter(|ts| {
+                ts.labels
+                    .iter()
+                    .any(|l| l.name == "__name__" && l.value == "h_bucket")
+            })
             .collect();
-        let le_values: Vec<&str> = buckets.iter()
-            .filter_map(|ts| ts.labels.iter().find(|l| l.name == "le").map(|l| l.value.as_str()))
+        let le_values: Vec<&str> = buckets
+            .iter()
+            .filter_map(|ts| {
+                ts.labels
+                    .iter()
+                    .find(|l| l.name == "le")
+                    .map(|l| l.value.as_str())
+            })
             .collect();
         assert!(le_values.contains(&"0.1"));
         assert!(le_values.contains(&"0.5"));
@@ -537,13 +578,22 @@ req_count{method=\"GET\"} 15
 
         // Assert
         assert_eq!(wr.timeseries.len(), 4);
-        let buckets: Vec<_> = wr.timeseries.iter()
-            .filter(|ts| ts.labels.iter().any(|l| l.name == "__name__" && l.value == "req_bucket"))
+        let buckets: Vec<_> = wr
+            .timeseries
+            .iter()
+            .filter(|ts| {
+                ts.labels
+                    .iter()
+                    .any(|l| l.name == "__name__" && l.value == "req_bucket")
+            })
             .collect();
         for ts in &buckets {
             assert!(
-                ts.labels.iter().any(|l| l.name == "method" && l.value == "GET"),
-                "bucket missing method label: {:?}", ts.labels
+                ts.labels
+                    .iter()
+                    .any(|l| l.name == "method" && l.value == "GET"),
+                "bucket missing method label: {:?}",
+                ts.labels
             );
         }
     }
@@ -576,7 +626,10 @@ req_count{method=\"GET\"} 15
         assert_eq!(wr.timeseries.len(), 1);
         let ts = &wr.timeseries[0];
         assert_eq!(ts.labels.len(), 1); // only __name__
-        assert!(ts.labels.iter().any(|l| l.name == "__name__" && l.value == "up"));
+        assert!(ts
+            .labels
+            .iter()
+            .any(|l| l.name == "__name__" && l.value == "up"));
     }
 
     #[test]
@@ -678,7 +731,10 @@ req_count{method=\"GET\"} 15
         let wr = parse_text_to_write_request(text).expect("parse failed");
 
         // Assert
-        assert!(wr.timeseries[0].labels.iter().any(|l| l.name == "path" && l.value == "/api/v1/users"));
+        assert!(wr.timeseries[0]
+            .labels
+            .iter()
+            .any(|l| l.name == "path" && l.value == "/api/v1/users"));
     }
 
     #[test]
@@ -770,7 +826,9 @@ rpc_duration_count 200
 
         // Assert — 2 quantiles + _sum + _count = 4
         assert_eq!(wr.timeseries.len(), 4);
-        let quantiles: Vec<_> = wr.timeseries.iter()
+        let quantiles: Vec<_> = wr
+            .timeseries
+            .iter()
             .filter(|ts| ts.labels.iter().any(|l| l.name == "quantile"))
             .collect();
         assert_eq!(quantiles.len(), 2);

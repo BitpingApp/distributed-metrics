@@ -89,10 +89,7 @@ async fn main() -> Result<()> {
             .at("/metrics", get(render_prom))
             .with(AddData::new(scrape_handle));
         join_set.spawn(async move {
-            if let Err(e) = Server::new(TcpListener::bind("[::]:3000"))
-                .run(app)
-                .await
-            {
+            if let Err(e) = Server::new(TcpListener::bind("[::]:3000")).run(app).await {
                 error!("HTTP server failed: {}", e);
                 std::process::exit(1);
             }

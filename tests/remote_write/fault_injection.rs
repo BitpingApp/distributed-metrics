@@ -47,7 +47,9 @@ async fn push_to_refused_port_returns_error() {
     let err = result.expect_err("expected connection error");
     let msg = err.to_string();
     assert!(
-        msg.contains("error sending request") || msg.contains("connection refused") || msg.contains("Connection refused"),
+        msg.contains("error sending request")
+            || msg.contains("connection refused")
+            || msg.contains("Connection refused"),
         "unexpected error: {}",
         msg
     );
@@ -73,10 +75,7 @@ async fn push_to_invalid_hostname_returns_error() {
 // HTTP error responses
 // ---------------------------------------------------------------------------
 
-async fn start_mock_server(
-    status_code: u16,
-    body: &str,
-) -> (tokio::task::JoinHandle<()>, String) {
+async fn start_mock_server(status_code: u16, body: &str) -> (tokio::task::JoinHandle<()>, String) {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind failed");
     let port = listener.local_addr().expect("local_addr failed").port();
     let url = format!("http://127.0.0.1:{}/api/v1/write", port);
@@ -132,7 +131,11 @@ async fn push_to_400_returns_error_with_status() {
     // Assert
     let err = result.expect_err("expected 400 error");
     let msg = err.to_string();
-    assert!(msg.contains("400"), "error should contain status code: {}", msg);
+    assert!(
+        msg.contains("400"),
+        "error should contain status code: {}",
+        msg
+    );
     assert!(
         msg.contains("bad request"),
         "error should contain response body: {}",
@@ -286,12 +289,19 @@ async fn push_empty_text_is_noop() {
             let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf[total..])
                 .await
                 .expect("read failed");
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             total += n;
-            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") { break; }
+            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") {
+                break;
+            }
         }
         let response = "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n";
-        stream.write_all(response.as_bytes()).await.expect("write failed");
+        stream
+            .write_all(response.as_bytes())
+            .await
+            .expect("write failed");
         stream.shutdown().await.expect("shutdown failed");
     });
 
@@ -363,9 +373,13 @@ async fn push_with_basic_auth_sends_authorization_header() {
             let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf[total..])
                 .await
                 .expect("read failed");
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             total += n;
-            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") { break; }
+            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") {
+                break;
+            }
         }
 
         let request = String::from_utf8_lossy(&buf[..total]).to_lowercase();
@@ -383,7 +397,10 @@ async fn push_with_basic_auth_sends_authorization_header() {
             body.len(),
             body
         );
-        stream.write_all(response.as_bytes()).await.expect("write failed");
+        stream
+            .write_all(response.as_bytes())
+            .await
+            .expect("write failed");
         stream.shutdown().await.expect("shutdown failed");
     });
 
@@ -435,9 +452,13 @@ async fn push_sends_custom_headers() {
             let n = tokio::io::AsyncReadExt::read(&mut stream, &mut buf[total..])
                 .await
                 .expect("read failed");
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             total += n;
-            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") { break; }
+            if buf[..total].windows(4).any(|w| w == b"\r\n\r\n") {
+                break;
+            }
         }
 
         let request = String::from_utf8_lossy(&buf[..total]).to_lowercase();
@@ -455,7 +476,10 @@ async fn push_sends_custom_headers() {
             body.len(),
             body
         );
-        stream.write_all(response.as_bytes()).await.expect("write failed");
+        stream
+            .write_all(response.as_bytes())
+            .await
+            .expect("write failed");
         stream.shutdown().await.expect("shutdown failed");
     });
 

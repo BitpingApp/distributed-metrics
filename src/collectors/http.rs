@@ -1,5 +1,4 @@
 use super::{Collector, CollectorErrors};
-use distributed_metrics::config::{HttpConfig, LookupTypes};
 use crate::types::{
     PerformHttpBodyConfiguration, PerformHttpBodyContinentCode, PerformHttpBodyCountryCode,
     PerformHttpBodyMobile, PerformHttpBodyProxy, PerformHttpBodyResidential, PerformHttpResponse,
@@ -7,12 +6,10 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use distributed_metrics::config::HttpConfig;
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::collections::HashMap;
 use std::str::FromStr;
 use tracing::{error, info, warn};
 
@@ -156,12 +153,7 @@ impl Collector for HttpCollector {
     }
 
     fn handle_response(&self, response: PerformHttpResponse) -> Result<(), CollectorErrors> {
-        let endpoint = self
-            .config
-            .common_config
-            .name
-            .as_ref()
-            .unwrap_or(&self.config.common_config.endpoint);
+        let endpoint = &self.config.common_config.endpoint;
 
         let node_info = response
             .node_info
@@ -176,6 +168,9 @@ impl Collector for HttpCollector {
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+        if let Some(name) = &self.config.common_config.name {
+            labels.insert("endpoint_name", name.clone());
+        }
         if let Ok(v) = geohash::encode(
             Coord {
                 x: node_info.lon,
@@ -284,16 +279,5 @@ impl HttpCollector {
 
         // Record total request
         counter!(format!("{}http_request_total", prefix), labels).increment(1);
-    }
-
-    fn hash_records<T: AsRef<str>>(records: &[T]) -> u64 {
-        use std::collections::BTreeSet;
-
-        let normalized: BTreeSet<String> =
-            records.iter().map(|s| s.as_ref().to_lowercase()).collect();
-
-        let mut hasher = DefaultHasher::new();
-        normalized.hash(&mut hasher);
-        hasher.finish()
     }
 }

@@ -1,7 +1,4 @@
-mod errors;
-
 use super::{Collector, CollectorErrors};
-use distributed_metrics::config::{DnsConfig, LookupTypes};
 use crate::types::{
     PerformDnsBodyConfiguration, PerformDnsBodyConfigurationLookupTypesItem,
     PerformDnsBodyContinentCode, PerformDnsBodyCountryCode, PerformDnsBodyMobile,
@@ -10,6 +7,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use distributed_metrics::config::{DnsConfig, LookupTypes};
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::hash_map::DefaultHasher;
@@ -155,12 +153,7 @@ impl Collector for DnsCollector {
     }
 
     fn handle_response(&self, response: PerformDnsResponse) -> Result<(), CollectorErrors> {
-        let endpoint = self
-            .config
-            .common_config
-            .name
-            .as_ref()
-            .unwrap_or(&self.config.common_config.endpoint);
+        let endpoint = &self.config.common_config.endpoint;
 
         let node_info = response
             .node_info
@@ -175,6 +168,9 @@ impl Collector for DnsCollector {
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+        if let Some(name) = &self.config.common_config.name {
+            labels.insert("endpoint_name", name.clone());
+        }
         if let Ok(v) = geohash::encode(
             Coord {
                 x: node_info.lon,

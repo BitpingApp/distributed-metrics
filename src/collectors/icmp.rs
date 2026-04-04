@@ -1,5 +1,4 @@
 use super::{Collector, CollectorErrors};
-use distributed_metrics::config::IcmpConfig;
 use crate::types::{
     PerformIcmpBodyContinentCode, PerformIcmpBodyCountryCode, PerformIcmpBodyMobile,
     PerformIcmpBodyProxy, PerformIcmpBodyResidential, PerformIcmpResponse,
@@ -7,6 +6,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
+use distributed_metrics::config::IcmpConfig;
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::HashMap;
@@ -155,12 +155,7 @@ impl Collector for IcmpCollector {
     }
 
     fn handle_response(&self, response: PerformIcmpResponse) -> Result<(), CollectorErrors> {
-        let endpoint = self
-            .config
-            .common_config
-            .name
-            .as_ref()
-            .unwrap_or(&self.config.common_config.endpoint);
+        let endpoint = &self.config.common_config.endpoint;
 
         let node_info = response
             .node_info
@@ -174,6 +169,9 @@ impl Collector for IcmpCollector {
             ("os", node_info.operating_system.clone()),
             ("endpoint", endpoint.clone()),
         ]);
+        if let Some(name) = &self.config.common_config.name {
+            labels.insert("endpoint_name", name.clone());
+        }
 
         if let Ok(v) = geohash::encode(
             Coord {
