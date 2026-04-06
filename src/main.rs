@@ -70,12 +70,17 @@ async fn main() -> Result<()> {
 
     info!("Starting DNS metrics collector");
 
-    let handle = PrometheusBuilder::new()
-        .idle_timeout(
-            MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM | MetricKindMask::GAUGE,
-            Some(CONFIG.global_config.metric_clear_timeout),
-        )
-        .upkeep_timeout(CONFIG.global_config.metric_clear_timeout.saturating_mul(2))
+    let handle = CONFIG
+        .global_config
+        .metric_clear_timeout
+        .map_or_else(PrometheusBuilder::new, |timeout| {
+            PrometheusBuilder::new()
+                .idle_timeout(
+                    MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM | MetricKindMask::GAUGE,
+                    Some(timeout),
+                )
+                .upkeep_timeout(timeout.saturating_mul(2))
+        })
         .install_recorder()
         .expect("failed to install recorder");
 

@@ -20,9 +20,12 @@ pub struct Conf {
 
 #[derive(Deserialize)]
 pub struct GlobalConfig {
-    #[serde(with = "humantime_serde")]
+    /// How long to keep metrics after a scrape. Set to `null` or omit to
+    /// disable clearing (metrics persist until the process restarts).
+    /// Only safe to disable when using `label_whitelist` to bound cardinality.
     #[serde(default = "default_metric_clear_timeout")]
-    pub metric_clear_timeout: Duration,
+    #[serde(with = "humantime_serde::option")]
+    pub metric_clear_timeout: Option<Duration>,
 
     /// Enable the /metrics scrape endpoint (default: true)
     #[serde(default = "default_true")]
@@ -33,8 +36,8 @@ pub struct GlobalConfig {
     pub remote_write: Vec<RemoteWriteDestination>,
 }
 
-fn default_metric_clear_timeout() -> Duration {
-    Duration::from_secs(10)
+fn default_metric_clear_timeout() -> Option<Duration> {
+    Some(Duration::from_secs(10))
 }
 
 fn default_true() -> bool {
@@ -147,6 +150,23 @@ pub struct MetricConfig {
     pub frequency: Duration,
 
     pub network: Option<NetworkCriteria>,
+
+    /// Optional label whitelist. When set, only labels whose keys appear in
+    /// this list are kept on recorded metrics. Unlisted labels are dropped
+    /// before recording, which reduces cardinality.
+    /// Example: `["country_code", "endpoint"]`
+    #[serde(default)]
+    pub label_whitelist: Option<Vec<String>>,
+}
+
+impl MetricConfig {
+    /// Filter a labels map to only include whitelisted keys.
+    /// If no whitelist is configured, all labels pass through.
+    pub fn filter_labels<'a>(&self, labels: &mut HashMap<&'a str, String>) {
+        if let Some(whitelist) = &self.label_whitelist {
+            labels.retain(|k, _| whitelist.iter().any(|w| w == k));
+        }
+    }
 }
 
 #[derive(Deserialize, EnumString, AsRefStr, Clone, Default, Debug)]

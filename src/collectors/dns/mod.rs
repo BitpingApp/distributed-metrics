@@ -180,6 +180,7 @@ impl Collector for DnsCollector {
         ) {
             labels.insert("geohash", v);
         }
+        self.config.common_config.filter_labels(&mut labels);
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
@@ -196,6 +197,7 @@ impl Collector for DnsCollector {
 
                 for server in dns_providers {
                     labels.insert("dns_server", server);
+                    self.config.common_config.filter_labels(&mut labels);
                     self.record_success_metrics(
                         dns_result,
                         result.duration.unwrap_or(0.0),
@@ -231,6 +233,7 @@ impl DnsCollector {
             }
         };
         labels.insert("error_type", error_type.into());
+        self.config.common_config.filter_labels(&mut labels);
 
         counter!(
             format!("{}dns_lookup_error_total", self.config.common_config.prefix),
@@ -267,6 +270,7 @@ impl DnsCollector {
 
         let mut record_labels = labels.clone();
         record_labels.insert("record_type", record_type.into());
+        self.config.common_config.filter_labels(&mut record_labels);
 
         gauge!(format!("{}dns_record_hash", prefix), &record_labels).set(hash as f64);
         gauge!(format!("{}dns_records_count", prefix), &record_labels).set(count as f64);

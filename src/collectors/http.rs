@@ -180,6 +180,7 @@ impl Collector for HttpCollector {
         ) {
             labels.insert("geohash", v);
         }
+        self.config.common_config.filter_labels(&mut labels);
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
@@ -221,6 +222,7 @@ impl HttpCollector {
             }
         };
         labels.insert("error_type", error_type.into());
+        self.config.common_config.filter_labels(&mut labels);
 
         counter!(
             format!(
@@ -252,6 +254,7 @@ impl HttpCollector {
         // Record status code (statusCode in the API response)
         let mut status_labels = labels.clone();
         status_labels.insert("status_code", result.status_code.to_string());
+        self.config.common_config.filter_labels(&mut status_labels);
         gauge!(format!("{}http_status_code", prefix), &status_labels).set(result.status_code);
 
         // Record body hash (bodyHash in the API response)
@@ -270,6 +273,7 @@ impl HttpCollector {
         // Record regex matches (matches in the API response)
         let mut match_labels = labels.clone();
         match_labels.insert("match_count", result.matches.len().to_string());
+        self.config.common_config.filter_labels(&mut match_labels);
 
         gauge!(format!("{}http_regex_match_count", prefix), &match_labels)
             .set(result.matches.len() as f64);

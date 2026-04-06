@@ -1,4 +1,7 @@
+# How long to keep metrics before clearing. Set to null to disable clearing
+# (only safe when using label_whitelist to bound cardinality).
 metric_clear_timeout: 1s
+# metric_clear_timeout: null  # disable clearing
 
 # Scrape endpoint (default: true). Set to false if using remote write only.
 # scrape_enabled: false
@@ -21,6 +24,11 @@ metrics:
   - type: dns
     endpoint: jup.ag
     frequency: 1s
+    # Only keep these labels on recorded metrics (reduces cardinality).
+    # Omit to keep all labels.
+    label_whitelist:
+      - country_code
+      - endpoint
     network:
       proxy: denied
       mobile: allowed

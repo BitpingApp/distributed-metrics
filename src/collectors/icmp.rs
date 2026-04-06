@@ -182,6 +182,7 @@ impl Collector for IcmpCollector {
         ) {
             labels.insert("geohash", v);
         }
+        self.config.common_config.filter_labels(&mut labels);
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
@@ -192,6 +193,7 @@ impl Collector for IcmpCollector {
             if let Some(icmp_result) = &result.result {
                 // Add IP address to labels
                 labels.insert("ip_address", icmp_result.ip_address.clone());
+                self.config.common_config.filter_labels(&mut labels);
 
                 // Record metrics only if we have valid results
                 self.record_success_metrics(result, icmp_result, &labels);
@@ -227,6 +229,7 @@ impl IcmpCollector {
             }
         };
         labels.insert("error_type", error_type.into());
+        self.config.common_config.filter_labels(&mut labels);
 
         counter!(
             format!(

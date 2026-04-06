@@ -200,6 +200,7 @@ impl Collector for HlsCollector {
         ) {
             labels.insert("geohash", v);
         }
+        self.config.common_config.filter_labels(&mut labels);
 
         match response.results.first() {
             Some(result) => {
@@ -311,6 +312,7 @@ impl HlsCollector {
             }
             .to_string(),
         );
+        self.config.common_config.filter_labels(&mut labels);
         let labels = &labels;
 
         for fragment in &rendition.content_fragment_metrics {
@@ -502,6 +504,7 @@ impl HlsCollector {
             }
         };
         labels.insert("error_type", error_type.into());
+        self.config.common_config.filter_labels(&mut labels);
 
         // Record the failure metrics
         counter!(
