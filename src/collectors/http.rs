@@ -43,6 +43,11 @@ impl Collector for HttpCollector {
             "Hash of the HTTP response body"
         );
 
+        metrics::describe_gauge!(
+            format!("{}http_status_match", prefix),
+            "Whether the HTTP status code matched the expected status codes (1=match, 0=mismatch). Only emitted when status_codes is configured."
+        );
+
         metrics::describe_counter!(
             format!("{}http_request_success_total", prefix),
             "Total number of successful HTTP requests"
@@ -139,7 +144,9 @@ impl Collector for HttpCollector {
                         headers: self.config.headers.clone(),
                         regex: self.config.regex.clone(),
                         return_body: Some(true),
-                        status_codes: vec![],
+                        status_codes: self.config.status_codes.as_ref()
+                            .map(|codes| codes.iter().map(|&c| c as f64).collect())
+                            .unwrap_or_default(),
                     }))
             })
             .send()
@@ -256,6 +263,13 @@ impl HttpCollector {
         status_labels.insert("status_code", result.status_code.to_string());
         self.config.common_config.filter_labels(&mut status_labels);
         gauge!(format!("{}http_status_code", prefix), &status_labels).set(result.status_code);
+
+        // Record status code match (only when status_codes is configured)
+        if let Some(expected_codes) = &self.config.status_codes {
+            let matched = expected_codes.contains(&(result.status_code as u16));
+            gauge!(format!("{}http_status_match", prefix), &status_labels)
+                .set(if matched { 1.0 } else { 0.0 });
+        }
 
         // Record body hash (bodyHash in the API response)
         let mut hash_u64 = 0u64;

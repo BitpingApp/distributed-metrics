@@ -173,6 +173,55 @@ Labels:
 - ip_address
 - error_type (for failures)
 
+### HTTP
+
+Measures HTTP response times, status codes, and body content.
+
+```yaml
+metrics:
+  - type: http
+    prefix: "custom_prefix_" # Optional prefix for metrics
+    name: "custom_name" # Optional name override
+    endpoint: https://api.example.com/health
+    frequency: 15s
+    method: GET
+    headers: # Optional custom headers
+      Authorization: "Bearer token123"
+    body: '{"key": "value"}' # Optional request body
+    regex: "ok|healthy" # Optional: regex to match against response body
+    status_codes: [200, 204] # Optional: expected status codes
+    network:
+      proxy: denied
+      residential: required
+```
+
+When `status_codes` is set, an `http_status_match` gauge is emitted: `1` if the response code is in the list, `0` otherwise. This lets you alert on unexpected status codes in PromQL:
+
+```promql
+http_status_match{endpoint="https://api.example.com/health"} == 0
+```
+
+Metrics collected:
+
+- `http_request_duration_ms`: HTTP request duration
+- `http_status_code`: Response status code
+- `http_status_match`: Whether status matched expected codes (only when `status_codes` is set)
+- `http_body_hash`: Hash of the response body for change detection
+- `http_regex_match_count`: Number of regex matches in the response body
+- `http_request_success_total`: Count of successful requests
+- `http_request_error_total`: Count of failed requests
+- `http_request_total`: Total requests attempted
+
+Labels:
+- country_code
+- continent
+- city
+- isp
+- os
+- endpoint
+- status_code
+- error_type (for errors)
+
 ### HLS
 
 Measures HLS video stream performance and quality metrics.

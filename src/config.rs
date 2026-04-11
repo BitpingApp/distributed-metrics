@@ -101,6 +101,7 @@ pub struct HttpConfig {
     pub method: HttpMethod,
     pub body: Option<String>,
     pub regex: Option<String>,
+    pub status_codes: Option<Vec<u16>>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
