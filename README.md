@@ -106,6 +106,9 @@ metrics:
       isp_regex: "^Comcast" # Optional: Filter by ISP name
       node_id: "node123" # Optional: Specific node ID
     lookup_type: IP # Optional: IP, MX, SOA, NS, TXT, SRV, TLSA (default: IP)
+    dns_servers: # Optional: custom DNS resolvers (host:port format)
+      - "8.8.8.8:53"
+      - "1.1.1.1:53"
 ```
 
 Metrics collected:

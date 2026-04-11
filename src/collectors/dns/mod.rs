@@ -135,7 +135,7 @@ impl Collector for DnsCollector {
                     .node_id(node_id)
                     .proxy(proxy)
                     .configuration(Some(PerformDnsBodyConfiguration {
-                        dns_servers: vec![],
+                        dns_servers: self.config.dns_servers.clone().unwrap_or_default(),
                         lookup_types: vec![PerformDnsBodyConfigurationLookupTypesItem::from_str(
                             self.config.lookup_type.as_ref(),
                         )

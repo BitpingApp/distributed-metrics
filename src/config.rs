@@ -118,6 +118,8 @@ pub struct DnsConfig {
     pub common_config: MetricConfig,
     #[serde(default)]
     pub lookup_type: LookupTypes,
+    #[serde(default)]
+    pub dns_servers: Option<Vec<String>>,
 }
 
 #[allow(clippy::upper_case_acronyms)]
