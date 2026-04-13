@@ -39,9 +39,9 @@
       {
         default = pkgs.rustPlatform.buildRustPackage {
           pname = "distributed-metrics";
-          version = "1.2.1";
+          version = "1.2.3";
           src = ./.;
-          cargoHash = "sha256-AYOYM2DkGIBlOfYaUibn5HQdtW032duafQUabBd2Vjg=";
+          cargoHash = "sha256-fEv3zOHDvHNM90ClkwqqTKX1ts+9iOGIsynTmU//+Fc=";
         };
       }
     );
