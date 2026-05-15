@@ -104,6 +104,66 @@ release:
   name_template: "distributed-metrics {{ .Tag }}"
   prerelease: auto
   draft: false
+  header: |
+    ## Install
+
+    ### Homebrew (macOS & Linux)
+
+    ```sh
+    brew install --cask BitpingApp/tap/distributed-metrics
+    ```
+
+    ### Debian / Ubuntu
+
+    ```sh
+    # x86_64
+    curl -LO https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics_{{ .Version }}_amd64.deb
+    sudo dpkg -i distributed-metrics_{{ .Version }}_amd64.deb
+
+    # arm64
+    curl -LO https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics_{{ .Version }}_arm64.deb
+    sudo dpkg -i distributed-metrics_{{ .Version }}_arm64.deb
+    ```
+
+    ### Fedora / RHEL
+
+    ```sh
+    sudo rpm -i https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics-{{ .Version }}-1.x86_64.rpm
+    # or aarch64:
+    sudo rpm -i https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics-{{ .Version }}-1.aarch64.rpm
+    ```
+
+    ### Alpine
+
+    ```sh
+    curl -LO https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics_{{ .Version }}_x86_64.apk
+    sudo apk add --allow-untrusted distributed-metrics_{{ .Version }}_x86_64.apk
+    ```
+
+    ### Tarball (any Linux/macOS)
+
+    Pick the right archive for your OS/arch from the assets below, then:
+
+    ```sh
+    tar -xJf distributed-metrics-{{ .Version }}-<os>-<arch>.tar.xz
+    cd distributed-metrics-{{ .Version }}-<os>-<arch>
+    ./distributed-metrics --help
+    ```
+
+    ## What's new
+
+  footer: |
+
+    ---
+
+    **Verify your download** against the bundled checksum file:
+
+    ```sh
+    curl -LO https://github.com/BitpingApp/distributed-metrics/releases/download/{{ .Tag }}/distributed-metrics-{{ .Version }}_SHA256SUMS
+    sha256sum -c distributed-metrics-{{ .Version }}_SHA256SUMS
+    ```
+
+    **Full changelog**: https://github.com/BitpingApp/distributed-metrics/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 changelog:
   use: git
