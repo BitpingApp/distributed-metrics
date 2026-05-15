@@ -72,8 +72,10 @@ nfpms:
         dst: /etc/distributed-metrics/Metrics.example.yaml
         type: config|noreplace
 
-brews:
+homebrew_casks:
   - name: distributed-metrics
+    binaries:
+      - distributed-metrics
     repository:
       owner: BitpingApp
       name: homebrew-tap
@@ -81,9 +83,19 @@ brews:
       token: "{{ .Env.GITHUB_TOKEN }}"
     homepage: "https://bitping.com"
     description: "Monitoring tool backed by Bitping's distributed network"
-    license: "MIT"
-    install: |
-      bin.install "distributed-metrics"
+    # Homebrew audit cares that the download domain matches the homepage;
+    # without `url.verified` it'd flag github.com vs bitping.com.
+    url:
+      verified: github.com/BitpingApp/distributed-metrics
+    # The binary isn't signed/notarized, so macOS Gatekeeper would quarantine
+    # the extracted file. Strip the quarantine xattr on install. (Linux
+    # `brew install --cask` ignores this block.)
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/distributed-metrics"]
+          end
 
 release:
   github:
