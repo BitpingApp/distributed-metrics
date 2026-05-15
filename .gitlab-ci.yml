@@ -9,8 +9,8 @@
 # include is gated on that variable. The pipeline:
 #   1. distributed-metrics:prepare bumps Cargo.toml to the target version,
 #      pushes the bump back to monorepo master, and subtree-pushes to GitHub.
-#   2. distributed-metrics:build:{linux,macos} cross-compile the bumped source.
-#   3. distributed-metrics:release runs GoReleaser to package + publish.
+#   2. distributed-metrics:release runs GoReleaser (builder: rust → cargo
+#      zigbuild) and builds + packages + publishes all 4 targets in one job.
 # ============================================================================
 
 include:
@@ -23,29 +23,10 @@ distributed-metrics:prepare:
     CUSTOMER_CARGO_TOML: apps/customer/distributed-metrics/Cargo.toml
     RELEASE_VERSION: $DISTRIBUTED_METRICS_RELEASE_VERSION
 
-distributed-metrics:build:linux:
-  extends: .customer_build_linux
-  needs:
-    - job: distributed-metrics:prepare
-  variables:
-    CUSTOMER_APP: distributed-metrics
-    CUSTOMER_BINARIES: "-p distributed-metrics"
-
-distributed-metrics:build:macos:
-  extends: .customer_build_macos
-  needs:
-    - job: distributed-metrics:prepare
-  variables:
-    CUSTOMER_APP: distributed-metrics
-    CUSTOMER_BINARIES: "-p distributed-metrics"
-
 distributed-metrics:release:
   extends: .customer_release
   needs:
-    - job: distributed-metrics:build:linux
-      artifacts: true
-    - job: distributed-metrics:build:macos
-      artifacts: true
+    - job: distributed-metrics:prepare
   variables:
     CUSTOMER_APP: distributed-metrics
     # Map the operator-set env var into the generic name the template reads.

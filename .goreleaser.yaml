@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# ============================================================================
+# distributed-metrics GoReleaser config (OSS, `builder: rust`).
+#
+# GoReleaser invokes `cargo zigbuild` itself via the OSS Rust builder
+# (https://goreleaser.com/customization/builds/builders/rust/, since v2.5),
+# so we do NOT pre-build the binary. One job (`<app>:release`) runs in the
+# goreleaser-cross image and does build + package + publish end to end.
+#
+# Workspace caveat: cargo runs from the monorepo root (`dir: ../../..`)
+# with `-p=distributed-metrics` so the workspace path-deps resolve.
+#
+# Currently enabled: archives, checksum, nfpms (deb/rpm/apk), brews, release.
+#
+# TODO (deferred, OSS-compatible — add back as separate tickets):
+#   - dockers: + docker_manifests: → ghcr.io multi-arch (needs docker daemon)
+#   - aurs:                       → Arch User Repository (needs AUR SSH key)
+# ============================================================================
+
+version: 2
+
+project_name: distributed-metrics
+
+builds:
+  - id: distributed-metrics
+    builder: rust
+    binary: distributed-metrics
+    # Run cargo from the monorepo root so workspace path-deps resolve.
+    # Path is relative to the goreleaser config's directory
+    # (apps/customer/distributed-metrics/).
+    dir: ../../..
+    targets:
+      - x86_64-unknown-linux-gnu
+      - aarch64-unknown-linux-gnu
+      - x86_64-apple-darwin
+      - aarch64-apple-darwin
+    # Default `flags` is `[--release]`; we override to add the workspace
+    # member selector so cargo doesn't try to build every crate.
+    flags:
+      - --release
+      - "-p=distributed-metrics"
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    formats: [tar.xz]
+    files:
+      - LICENSE.md
+      - README.md
+      - Metrics.example.yaml
+
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Version }}_SHA256SUMS"
+  algorithm: sha256
+
+nfpms:
+  - id: packages
+    package_name: distributed-metrics
+    file_name_template: "{{ .ConventionalFileName }}"
+    formats: [deb, rpm, apk]
+    homepage: "https://bitping.com"
+    maintainer: "Bitping <support@bitping.com>"
+    description: "Monitoring tool backed by Bitping's distributed network, exposed as a Prometheus metrics endpoint."
+    license: "MIT"
+    bindir: /usr/local/bin
+    contents:
+      - src: LICENSE.md
+        dst: /usr/share/doc/distributed-metrics/LICENSE.md
+      - src: README.md
+        dst: /usr/share/doc/distributed-metrics/README.md
+      - src: Metrics.example.yaml
+        dst: /etc/distributed-metrics/Metrics.example.yaml
+        type: config|noreplace
+
+brews:
+  - name: distributed-metrics
+    repository:
+      owner: BitpingApp
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    homepage: "https://bitping.com"
+    description: "Monitoring tool backed by Bitping's distributed network"
+    license: "MIT"
+    install: |
+      bin.install "distributed-metrics"
+
+release:
+  github:
+    owner: BitpingApp
+    name: distributed-metrics
+  name_template: "distributed-metrics {{ .Tag }}"
+  prerelease: auto
+  draft: false
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    include:
+      - '^[a-z]+\(distributed-metrics\)(!)?:'
+    exclude:
+      - "^chore:"
+      - "^docs:"
+      - "^test:"
+      - "Merge "
+  groups:
+    - title: "Features"
+      regexp: '^feat\(distributed-metrics\)'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^fix\(distributed-metrics\)'
+      order: 1
+    - title: "Performance"
+      regexp: '^perf\(distributed-metrics\)'
+      order: 2
+    - title: "Refactors"
+      regexp: '^refactor\(distributed-metrics\)'
+      order: 3
+    - title: "Other"
+      order: 999
