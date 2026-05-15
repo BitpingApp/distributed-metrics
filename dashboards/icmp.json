@@ -1,0 +1,2065 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 8,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "panels": [],
+      "title": "Global Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-worldmap-panel",
+        "uid": "${datasource}"
+      },
+      "description": "This map shows the average ICMP ping latency across different countries.\n\nColor Scale:\n🟢 0-50ms: Excellent (Local/Regional)\n🟡 50-150ms: Good (Cross-Region)\n🟠 150-300ms: Degraded (Cross-Continental)\n🔴 >300ms: Poor (Requires Investigation)\n\nValues represent:\n- Average maximum latency per country\n- Higher values may indicate:\n  • Network congestion\n  • Suboptimal routing\n  • Geographic distance\n  • Infrastructure limitations\n\nNote: Hover over countries to see exact latency values. Gray countries indicate no data available.\n\nUse this map to:\n- Identify regions with latency issues\n- Plan infrastructure improvements\n- Monitor global network performance\n- Compare performance across regions\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-green",
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "fieldMinMax": true,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 250
+              }
+            ]
+          },
+          "unit": "dtdurationms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "backgroundColor": "transparent",
+        "basemap": {
+          "name": "Basemap",
+          "type": "default"
+        },
+        "circleMaxSize": 30,
+        "circleMinSize": 2,
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": true,
+          "showZoom": true
+        },
+        "decimals": 0,
+        "esMetric": "Count",
+        "hideEmpty": false,
+        "hideZero": false,
+        "initialZoom": 1,
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "value",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.4,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 10,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "filterData": {
+              "id": "byRefId",
+              "options": "A"
+            },
+            "name": "Uptime",
+            "opacity": 1,
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "locationData": "countries",
+        "mapCenter": "(0°, 0°)",
+        "mapCenterLatitude": 0,
+        "mapCenterLongitude": 0,
+        "maxDataPoints": 1,
+        "mouseWheelZoom": false,
+        "showLegend": true,
+        "stickyLabels": false,
+        "tableQueryOptions": {
+          "geohashField": "geohash",
+          "latitudeField": "latitude",
+          "longitudeField": "longitude",
+          "metricField": "metric",
+          "queryType": "geohash"
+        },
+        "thresholds": "0,0.9,0.99",
+        "tooltip": {
+          "mode": "details"
+        },
+        "unitPlural": "",
+        "unitSingle": "",
+        "valueName": "total",
+        "view": {
+          "allLayers": true,
+          "id": "zero",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 1
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg by(country_code) (\n  last_over_time(\n  icmp_ping_duration_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\",\n    ip_address=~\"$ip\",\n    quantile=\"0.95\"\n  })\n)",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "intervalFactor": 1,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Global ICMP Latency Distribution",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "auto",
+            "source": "avg(icmp_ping_success_ratio{country_code=~\".*\"})"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Time": "time",
+              "Value": "value",
+              "avg(icmp_ping_success_ratio{country_code=~\".*\"})": "value",
+              "country_code": "lookup"
+            }
+          }
+        }
+      ],
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "grafana-worldmap-panel",
+        "uid": "${datasource}"
+      },
+      "description": "This map shows the packet delivery success rate across different countries over the selected time range, using the most recent values.\n\nColor Scale:\n🟢 99.9-100%: Excellent (No packet loss)\n🟡 98-99.9%: Good (Minimal packet loss)\n🟠 95-98%: Degraded (Moderate packet loss)\n🔴 <95%: Critical (Severe packet loss)\n\nValues represent:\n- Most recent packet delivery success rate per country\n- Calculated as: (last_received / last_sent) * 100\n- Time Range: $__range\n- Lower values indicate packet loss due to:\n  • Network congestion\n  • Route instability\n  • Infrastructure issues\n  • Network policies/firewalls\n\nNote: \n- Hover over countries to see exact delivery rates\n- Gray countries indicate no data available\n- Values reflect the most recent state within the selected time window\n\nUse this map to:\n- Identify regions with packet loss\n- Monitor network reliability\n- Track connection stability\n- Guide troubleshooting efforts",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "semi-dark-green",
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "fieldMinMax": true,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 95
+              },
+              {
+                "color": "#EF843C",
+                "value": 98
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 15,
+      "options": {
+        "backgroundColor": "transparent",
+        "basemap": {
+          "name": "Basemap",
+          "type": "default"
+        },
+        "circleMaxSize": 30,
+        "circleMinSize": 2,
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": true,
+          "showZoom": true
+        },
+        "decimals": 0,
+        "esMetric": "Count",
+        "hideEmpty": false,
+        "hideZero": false,
+        "initialZoom": 1,
+        "layers": [
+          {
+            "config": {
+              "showLegend": false,
+              "style": {
+                "color": {
+                  "field": "value",
+                  "fixed": "green"
+                },
+                "opacity": 0.4,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 10,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "value",
+                  "fixed": "",
+                  "mode": "field"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "filterData": {
+              "id": "byRefId",
+              "options": "A"
+            },
+            "name": "Uptime",
+            "opacity": 1,
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "locationData": "countries",
+        "mapCenter": "(0°, 0°)",
+        "mapCenterLatitude": 0,
+        "mapCenterLongitude": 0,
+        "maxDataPoints": 1,
+        "mouseWheelZoom": false,
+        "showLegend": true,
+        "stickyLabels": false,
+        "tableQueryOptions": {
+          "geohashField": "geohash",
+          "latitudeField": "latitude",
+          "longitudeField": "longitude",
+          "metricField": "metric",
+          "queryType": "geohash"
+        },
+        "thresholds": "0,0.9,0.99",
+        "tooltip": {
+          "mode": "details"
+        },
+        "unitPlural": "",
+        "unitSingle": "",
+        "valueName": "total",
+        "view": {
+          "allLayers": true,
+          "id": "zero",
+          "lat": 0,
+          "lon": 0,
+          "zoom": 1
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "(\n  sum by(country_code) (\n    last_over_time(\n      icmp_ping_packets_received{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n  /\n  sum by(country_code) (\n    last_over_time(\n      icmp_ping_packets_sent{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n)\n",
+          "format": "table",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "intervalFactor": 1,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Global Network Availability by Country",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "auto",
+            "source": "avg(icmp_ping_success_ratio{country_code=~\".*\"})"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Time": "time",
+              "Value": "value",
+              "avg(icmp_ping_success_ratio{country_code=~\".*\"})": "value",
+              "country_code": "lookup"
+            }
+          }
+        }
+      ],
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the overall packet delivery success rate across all monitored locations.\n\nInterpretation:\n🟢 99.9-100%: Excellent global reliability\n🟡 98-99.9%: Good, but room for improvement\n🟠 95-98%: Requires attention\n🔴 <95%: Critical global issues\n\nCalculation:\n- Total packets received / Total packets sent\n- Aggregated across all regions\n- Using most recent values\n- Time Range: $__range\n\nUse this metric to:\n- Monitor overall network health\n- Track global SLA compliance\n- Identify systemic issues\n- Guide global infrastructure decisions\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 95
+              },
+              {
+                "color": "yellow",
+                "value": 98
+              },
+              {
+                "color": "green",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "(\n  sum(\n    last_over_time(\n      icmp_ping_packets_received{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n  /\n  sum(\n    last_over_time(\n      icmp_ping_packets_sent{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n)",
+          "instant": false,
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Global Network Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows the average ICMP ping latency across all monitored locations globally.\n\nInterpretation:\n🟢 0-50ms: Excellent global performance\n🟡 50-100ms: Good performance\n🟠 100-200ms: Requires investigation\n🔴 >200ms: Critical performance issues\n\nCalculation:\n- Average of all ping latencies\n- Aggregated across all regions\n- Using most recent values\n- Time Range: $__range\n\nFactors affecting latency:\n- Geographic distance\n- Network congestion\n- Routing efficiency\n- Infrastructure quality\n- Cross-continental links\n\nUse this metric to:\n- Monitor global network performance\n- Identify systemic slowdowns\n- Track performance trends\n- Guide optimization efforts\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 200
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg(\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\"\n    }[$__range]\n  )\n)\n",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Global Average Latency",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows latency values with anomaly detection (>50% increase from 1h ago)",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed"
+          },
+          "custom": {
+            "axisBorderShow": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "area"
+            }
+          },
+          "decimals": 1,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Current Latency"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.spanNulls",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Threshold"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.spanNulls",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anomalies"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"})",
+          "legendFormat": "Current Latency",
+          "range": true,
+          "refId": "Current Latency"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fe26t540b4lc0e"
+          },
+          "editorMode": "code",
+          "expr": "avg(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"} offset 1h) * 1.5",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Threshold",
+          "range": true,
+          "refId": "Threshold"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fe26t540b4lc0e"
+          },
+          "editorMode": "code",
+          "expr": "avg(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}) \n* (avg(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}) > avg(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"} offset 1h) * 1.5)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Anomalies",
+          "range": true,
+          "refId": "Anomalies"
+        }
+      ],
+      "title": "Latency Anomalies",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Continent Level",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMax": 1,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.95
+              },
+              {
+                "color": "yellow",
+                "value": 0.98
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "(\n  sum by(continent) (\n    last_over_time(\n      icmp_ping_packets_received{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n  /\n  sum by(continent) (\n    last_over_time(\n      icmp_ping_packets_sent{\n        continent=~\"$continent\",\n        country_code=~\"$country\",\n        city=~\"$city\",\n        isp=~\"$isp\",\n        endpoint=~\"$endpoint\"\n      }[$__range]\n    )\n  )\n)\n",
+          "legendFormat": "{{continent}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Network Availability by Continent",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Shows average ICMP ping latency broken down by continent, highlighting regional performance variations.\n\nColor Scale:\n🟢 0-50ms: Excellent (Local/Regional)\n🟡 50-150ms: Good (Cross-Region)\n🟠 150-300ms: Degraded (Cross-Continental)\n🔴 >300ms: Poor (Requires Investigation)\n\nCalculation:\n- Average of ping latencies per continent\n- Using most recent values\n- Time Range: $__range\n\nExpected patterns:\n- NA/EU: Generally lowest latency\n- AS/OC: May show higher latency\n- SA/AF: Could show highest latency due to infrastructure\n\nFactors affecting regional latency:\n- Geographic distance to endpoints\n- Regional infrastructure quality\n- Cross-continental routing\n- Submarine cable paths\n- Network density\n\nUse this panel to:\n- Compare regional performance\n- Identify continent-specific bottlenecks\n- Plan infrastructure improvements\n- Set regional SLA targets\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "axisSoftMin": 0,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "#EF843C",
+                "value": 150
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg by(continent) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\"\n    }[$__range]\n  )\n)\n",
+          "legendFormat": "{{continent}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Average Latency by Continent",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "id": 9,
+      "panels": [],
+      "title": "Country Level",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "fieldMinMax": true,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success Rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Latency"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "red",
+                      "value": 200
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg by(country_code) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "refId": "Success"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg by(country_code) (last_over_time(icmp_ping_latency_avg_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range]))",
+          "format": "table",
+          "instant": true,
+          "refId": "Latency"
+        }
+      ],
+      "title": "Country Performance Overview",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value #Latency": "Avg Latency",
+              "Value #Success": "Success Rate",
+              "country_code": "Country"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Avg Latency"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": false,
+                "field": "Success Rate"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fe26t540b4lc0e"
+      },
+      "description": "Shows the percentage of ICMP ping packets lost per country over the selected time period.\n\nCalculation:\n- (1 - received_packets/sent_packets) * 100\n- Averaged across all nodes in each country\n- Time Range: $__range\n\nThresholds:\n🟢 0-0.1%: Excellent connectivity\n🟡 0.1-1%: Minor packet loss\n🟠 1-5%: Significant packet loss\n🔴 >5%: Critical packet loss\n\nHigher percentages indicate:\n- Network congestion\n- Route instability\n- Infrastructure issues\n- Potential connectivity problems\n\nNote: Countries are sorted by worst to best performance. Empty or missing countries indicate no data or no packet loss.\n",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 17,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sort_desc(\n  100 * (1 - \n    avg by(country_code) (\n      increase(icmp_ping_packets_received[$__range])\n      /\n      increase(icmp_ping_packets_sent[$__range])\n    )\n  ) > 0\n)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Packet Loss by Country",
+      "type": "barchart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 12,
+      "panels": [],
+      "title": "City/ISP Level",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "fe26t540b4lc0e"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success Rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Latency"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dtdurationms"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge",
+                  "valueDisplayMode": "color"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "red",
+                      "value": 200
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "id": 16,
+      "interval": "5m",
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) if \ncount by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2\n",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "Latency"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fe26t540b4lc0e"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg by(country_code, city) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) if \ncount by(country_code, city) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "Success"
+        }
+      ],
+      "timeFrom": "1d",
+      "title": "City Performance",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "Value #Latency": 4,
+              "Value #Success": 3,
+              "city": 2,
+              "country_code": 1
+            },
+            "renameByName": {
+              "Value #Latency": "Avg Latency",
+              "Value #Success": "Success Rate",
+              "city": "City",
+              "country_code": "Country",
+              "isp": "ISP"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Avg Latency"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": false,
+                "field": "Success Rate"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "fe26t540b4lc0e"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success Rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.99
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Latency"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dtdurationms"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge",
+                  "valueDisplayMode": "color"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 100
+                    },
+                    {
+                      "color": "red",
+                      "value": 200
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "id": 11,
+      "interval": "5m",
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) if \ncount by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "Latency"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fe26t540b4lc0e"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg by(country_code, isp) (last_over_time(icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}[$__range])) if \ncount by(country_code, isp) (\n  last_over_time(\n    icmp_ping_latency_avg_ms{\n      continent=~\"$continent\",\n      country_code=~\"$country\",\n      city=~\"$city\",\n      isp=~\"$isp\",\n      endpoint=~\"$endpoint\",\n      ip_address=~\"$ip\"\n    }[$__range]\n  )\n) > 2\n",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "Success"
+        }
+      ],
+      "timeFrom": "1d",
+      "title": "ISP Performance by Country",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time": 0,
+              "Value #Latency": 4,
+              "Value #Success": 3,
+              "country_code": 1,
+              "isp": 2
+            },
+            "renameByName": {
+              "Value #Latency": "Avg Latency",
+              "Value #Success": "Success Rate",
+              "country_code": "Country",
+              "isp": "ISP"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Avg Latency"
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": false,
+                "field": "Success Rate"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "dark-orange",
+                "value": 50
+              },
+              {
+                "color": "semi-dark-yellow",
+                "value": 70
+              },
+              {
+                "color": "yellow",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 100
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "id": 14,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "text": {}
+      },
+      "pluginVersion": "11.3.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "avg by(isp, country_code) (icmp_ping_success_ratio{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",ip_address=~\"$ip\"}) < 1",
+          "legendFormat": "{{isp}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "ISP Success Rate < 100% Uptime",
+      "type": "gauge"
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 40,
+  "tags": [
+    "monitoring",
+    "network"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "${datasource}",
+          "value": "${datasource}"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio, continent)",
+        "includeAll": true,
+        "label": "Continent",
+        "multi": true,
+        "name": "continent",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio, continent)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\"}, country_code)",
+        "includeAll": true,
+        "label": "Country",
+        "multi": true,
+        "name": "country",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio{continent=~\"$continent\"}, country_code)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\"}, city)",
+        "includeAll": true,
+        "label": "City",
+        "multi": true,
+        "name": "city",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\"}, city)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\", city=~\"$city\"}, isp)",
+        "includeAll": true,
+        "label": "ISP",
+        "multi": true,
+        "name": "isp",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio{continent=~\"$continent\", country_code=~\"$country\", city=~\"$city\"}, isp)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "jup.ag"
+          ],
+          "value": [
+            "jup.ag"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio, endpoint)",
+        "includeAll": true,
+        "label": "Endpoint",
+        "multi": true,
+        "name": "endpoint",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio, endpoint)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(icmp_ping_success_ratio, ip_address)",
+        "includeAll": true,
+        "label": "IP Address",
+        "multi": true,
+        "name": "ip",
+        "options": [],
+        "query": {
+          "query": "label_values(icmp_ping_success_ratio, ip_address)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "filters": [],
+        "name": "Filters",
+        "type": "adhoc"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Global Ping Statistics Breakdown",
+  "uid": "global-network-monitoring",
+  "version": 72,
+  "weekStart": ""
+}

@@ -1,0 +1,1345 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 17,
+    "links": [],
+    "panels": [
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 1,
+        "panels": [],
+        "title": "Global HLS Overview",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "description": "Monitors overall streaming service reliability by tracking failure rates and error types.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red"
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.9
+                },
+                {
+                  "color": "green",
+                  "value": 0.98
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 1
+        },
+        "id": 2,
+        "options": {
+          "minVizHeight": 75,
+          "minVizWidth": 75,
+          "orientation": "auto",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true,
+          "sizing": "auto"
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "100 * clamp_min(\n  1 - (\n    sum(\n      increase(\n        hls_failures_total{\n          continent=~\"$continent\",\n          country_code=~\"$country\",\n          city=~\"$city\",\n          isp=~\"$isp\",\n          endpoint=~\"$endpoint\"\n        }\n      ) or vector(0)\n    )\n    /\n    (sum(\n      increase(\n        hls_total_ms_count{\n          continent=~\"$continent\",\n          country_code=~\"$country\",\n          city=~\"$city\",\n          isp=~\"$isp\",\n          endpoint=~\"$endpoint\"\n        }\n      )\n    ) > 0)\n  ),\n  0\n)\n",
+            "instant": false,
+            "legendFormat": "Success Rate",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Service Health",
+        "type": "gauge"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "description": "Segmented view of startup time across different quality levels",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "#EAB839",
+                  "value": 2000
+                },
+                {
+                  "color": "red",
+                  "value": 4000
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 11,
+          "x": 6,
+          "y": 1
+        },
+        "id": 3,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "last"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "quantile (0.95, \n  last_over_time(hls_initial_buffer_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n  }[$__range])\n) by (resolution)",
+            "format": "time_series",
+            "instant": false,
+            "legendFormat": "{{resolution}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "P95 Time to First Frame by Resolution",
+        "transformations": [
+          {
+            "id": "renameByRegex",
+            "options": {
+              "regex": "Value",
+              "renamePattern": "Unknown"
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "yellow",
+                  "value": 300
+                },
+                {
+                  "color": "orange",
+                  "value": 400
+                },
+                {
+                  "color": "semi-dark-red",
+                  "value": 500
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 17,
+          "w": 7,
+          "x": 17,
+          "y": 1
+        },
+        "id": 13,
+        "options": {
+          "basemap": {
+            "config": {},
+            "name": "Layer 0",
+            "type": "default"
+          },
+          "controls": {
+            "mouseWheelZoom": true,
+            "showAttribution": true,
+            "showDebug": false,
+            "showMeasure": false,
+            "showScale": false,
+            "showZoom": true
+          },
+          "layers": [
+            {
+              "config": {
+                "showLegend": true,
+                "style": {
+                  "color": {
+                    "field": "Value",
+                    "fixed": "dark-green"
+                  },
+                  "opacity": 0.4,
+                  "rotation": {
+                    "fixed": 0,
+                    "max": 360,
+                    "min": -360,
+                    "mode": "mod"
+                  },
+                  "size": {
+                    "field": "Value",
+                    "fixed": 5,
+                    "max": 15,
+                    "min": 2
+                  },
+                  "symbol": {
+                    "fixed": "img/icons/marker/circle.svg",
+                    "mode": "fixed"
+                  },
+                  "symbolAlign": {
+                    "horizontal": "center",
+                    "vertical": "center"
+                  },
+                  "text": {
+                    "field": "Value",
+                    "fixed": "",
+                    "mode": "field"
+                  },
+                  "textConfig": {
+                    "fontSize": 12,
+                    "offsetY": 15,
+                    "textAlign": "center",
+                    "textBaseline": "middle"
+                  }
+                }
+              },
+              "filterData": {
+                "id": "byRefId",
+                "options": "A"
+              },
+              "name": "Layer 1",
+              "tooltip": true,
+              "type": "markers"
+            }
+          ],
+          "tooltip": {
+            "mode": "details"
+          },
+          "view": {
+            "allLayers": true,
+            "id": "fit",
+            "lastOnly": false,
+            "lat": 0,
+            "layer": "Layer 1",
+            "lon": 0,
+            "padding": 100,
+            "shared": false,
+            "zoom": 15
+          }
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "quantile(0.95, last_over_time(hls_master_ttfb_ms{continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"}[$__range])) by(geohash, endpoint) > 250",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "P95 Slowest Areas To Download Master Playlist",
+        "type": "geomap"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic-by-name"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 100,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineStyle": {
+                "fill": "solid"
+              },
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "normal"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red"
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 6,
+          "x": 0,
+          "y": 9
+        },
+        "id": 10,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "sum by(error_type) (increase(hls_errors_by_type{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__rate_interval]))",
+            "instant": false,
+            "legendFormat": "{{error_type}}",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Errors by Type",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "description": "Measures the rate at which video segments are loaded into the playback buffer. A higher fill rate indicates faster loading of video content into the player's buffer, while lower rates may indicate network congestion or delivery issues.\n\nThis metric is useful for:\n- Identifying potential streaming quality issues\n- Monitoring CDN performance across different regions\n- Detecting network bottlenecks affecting video delivery\n- Ensuring optimal viewer experience\n\nFiltered by:\n- Continent\n- Country\n- City\n- ISP\n- Endpoint\n\nValues represent the 95th percentile of buffer fill rates, highlighting peak performance demands and potential areas requiring optimization.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds",
+              "seriesBy": "last"
+            },
+            "decimals": 1,
+            "fieldMinMax": false,
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red"
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "green",
+                  "value": 1.5
+                }
+              ]
+            },
+            "unit": "none"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 11,
+          "x": 6,
+          "y": 9
+        },
+        "id": 4,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "quantile by (resolution) (0.95, hls_buffer_fill_rate{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"})[$__range]",
+            "instant": false,
+            "legendFormat": "{{resolution}} Fill Ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "P95 Buffer Fill Ratio by Resolution",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "description": "# HLS Playlist Chain Load Time Analysis (95th Percentile)\n\nVisualizes the time breakdown of loading the HLS playlist chain, comparing the Master playlist resolution against Fragment acquisition times. The stacked area chart reveals potential bottlenecks in the playlist loading pipeline by breaking down the connection phases.\n\nKey components measured (95th percentile):\n1. **Master Playlist Chain Load**: Total time to resolve and load the master HLS playlist\n2. **TCP Connection Time**: Time to establish TCP connection for master playlist\n3. **TLS Handshake Time**: Duration of TLS/SSL handshake for master playlist\n4. **DNS Resolution Time**: Time to resolve domain for master playlist\n5. **Time to First Byte (TTFB)**: Time until first byte received for master playlist\n\nThis visualization helps:\n- Identify if master playlist resolution is creating a performance bottleneck\n- Compare master playlist load times against overall fragment acquisition\n- Pinpoint which connection phase (TCP, TLS, DNS, or TTFB) is contributing to increased load times\n- Optimize CDN and delivery configurations based on identified bottlenecks\n\nFiltered by:\n- Continent\n- Country\n- City\n- ISP\n- Endpoint\n\nThe stacked format clearly shows the proportion of time each connection phase contributes to the overall playlist chain load time, helping identify areas requiring optimization.\n",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": -1,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 37,
+              "gradientMode": "hue",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineStyle": {
+                "fill": "solid"
+              },
+              "lineWidth": 2,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        },
+        "id": 14,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "p95",
+              "min"
+            ],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.6.0",
+        "targets": [
+          {
+            "editorMode": "code",
+            "expr": "quantile by (endpoint, country_code) (0.95, hls_playlist_chain_load_time{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n})[$__range]",
+            "legendFormat": "{{country_code}} - {{endpoint}} Playlist Chain Load ",
+            "range": true,
+            "refId": "Chained"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "quantile by (endpoint, country_code) (0.95, hls_master_tcp_connect_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n})[$__range]",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} - {{endpoint}} Master TCP Connect",
+            "range": true,
+            "refId": "Master TCP"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "quantile by (endpoint, country_code) (0.95, hls_master_tls_handshake_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n})[$__range]",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} - {{endpoint}} Master TLS Handshake",
+            "range": true,
+            "refId": "Master TLS Handshake"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "quantile by (endpoint, country_code) (0.95, hls_master_dns_resolve_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n})[$__range]",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} - {{endpoint}} Master TLS Handshake",
+            "range": true,
+            "refId": "Master DNS"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "quantile by (endpoint, country_code) (0.95, hls_master_ttfb_ms{\n    continent=~\"$continent\",\n    country_code=~\"$country\",\n    city=~\"$city\",\n    isp=~\"$isp\",\n    endpoint=~\"$endpoint\"\n})[$__range]",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} - {{endpoint}} Master TTFB",
+            "range": true,
+            "refId": "Master TTFB"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "expr": "",
+            "hide": false,
+            "instant": false,
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "HLS Playlist Chain Load Time Analysis (95th Percentile)",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 28
+        },
+        "id": 15,
+        "panels": [],
+        "title": "Regional Breakdown",
+        "type": "row"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 29
+        },
+        "id": 5,
+        "panels": [],
+        "title": "Playlist & Fragment Analysis",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 30
+        },
+        "id": 6,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max",
+              "min"
+            ],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by(endpoint) (last_over_time(hls_master_download_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "instant": false,
+            "legendFormat": "Master Playlist - {{endpoint}}",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by(endpoint, resolution) (last_over_time(hls_fragment_download_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "Fragments@{{resolution}} - {{endpoint}}",
+            "range": true,
+            "refId": "B"
+          }
+        ],
+        "title": "Download Times",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "stepAfter",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "bytes"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 30
+        },
+        "id": 7,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max",
+              "min"
+            ],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by(endpoint) (last_over_time(hls_master_size_bytes{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "instant": false,
+            "legendFormat": "Master Playlist  - {{endpoint}}",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by(endpoint, resolution) (last_over_time(hls_fragment_size_bytes{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "Fragments@{{resolution}} - {{endpoint}}",
+            "range": true,
+            "refId": "B"
+          }
+        ],
+        "title": "Payload Sizes",
+        "type": "timeseries"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 38
+        },
+        "id": 8,
+        "panels": [],
+        "title": "Connection Metrics - {{continent}}}",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 10,
+          "w": 24,
+          "x": 0,
+          "y": 39
+        },
+        "id": 9,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max"
+            ],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_master_dns_resolve_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",quantile=\"0.95\"}[$__range]))",
+            "instant": false,
+            "legendFormat": "{{country_code}} DNS Resolution - {{endpoint}}",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_master_tcp_connect_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",quantile=\"0.95\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} TCP Connect - {{endpoint}}",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_master_tls_handshake_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\",quantile=\"0.95\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} TLS Handshake - {{endpoint}}",
+            "range": true,
+            "refId": "C"
+          }
+        ],
+        "title": "P95 Master Playlist Connection Timings",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            },
+            "unit": "ms"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 49
+        },
+        "id": 11,
+        "options": {
+          "legend": {
+            "calcs": [
+              "mean",
+              "max"
+            ],
+            "displayMode": "table",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.4.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_fragment_dns_resolve_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "instant": false,
+            "legendFormat": "{{country_code}} DNS Resolution - {{endpoint}}",
+            "range": true,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_fragment_tcp_connect_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} TCP Connect - {{endpoint}}",
+            "range": true,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "editorMode": "code",
+            "expr": "avg by (endpoint, country_code) (last_over_time(hls_fragment_tls_handshake_ms{continent=~\"$continent\",country_code=~\"$country\",city=~\"$city\",isp=~\"$isp\",endpoint=~\"$endpoint\"}[$__range]))",
+            "hide": false,
+            "instant": false,
+            "legendFormat": "{{country_code}} TLS Handshake - {{endpoint}}",
+            "range": true,
+            "refId": "C"
+          }
+        ],
+        "title": "P95 Fragment Connection Timings",
+        "type": "timeseries"
+      }
+    ],
+    "preload": false,
+    "refresh": "5s",
+    "schemaVersion": 41,
+    "tags": [
+      "hls",
+      "streaming",
+      "monitoring"
+    ],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "selected": true,
+            "text": "vm-metrics",
+            "value": "vm-metrics"
+          },
+          "hide": 0,
+          "includeAll": false,
+          "multi": false,
+          "name": "datasource",
+          "options": [],
+          "query": "prometheus",
+          "queryValue": "",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "type": "datasource"
+        },
+        {
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "definition": "label_values(continent)",
+          "includeAll": true,
+          "label": "Continent",
+          "multi": true,
+          "name": "continent",
+          "options": [],
+          "query": {
+            "query": "label_values(continent)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "definition": "label_values(country_code)",
+          "includeAll": true,
+          "label": "Country",
+          "multi": true,
+          "name": "country",
+          "options": [],
+          "query": {
+            "query": "label_values(country_code)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "definition": "label_values(city)",
+          "includeAll": true,
+          "label": "City",
+          "multi": true,
+          "name": "city",
+          "options": [],
+          "query": {
+            "query": "label_values(city)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "definition": "label_values(isp)",
+          "includeAll": true,
+          "label": "ISP",
+          "multi": true,
+          "name": "isp",
+          "options": [],
+          "query": {
+            "query": "label_values(isp)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        },
+        {
+          "allValue": ".*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "definition": "label_values(endpoint)",
+          "includeAll": true,
+          "label": "Endpoint",
+          "multi": true,
+          "name": "endpoint",
+          "options": [],
+          "query": {
+            "query": "label_values(endpoint)",
+            "refId": "StandardVariableQuery"
+          },
+          "refresh": 2,
+          "regex": "",
+          "sort": 1,
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "HLS Streaming Performance Dashboard",
+    "uid": "hls-streaming-metrics",
+    "version": 54
+  }
