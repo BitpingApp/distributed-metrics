@@ -1,0 +1,37 @@
+# ============================================================================
+# distributed-metrics customer release pipeline (thin wrapper)
+#
+# Build + publish logic lives in apps/customer/.shared-ci.yml. This file just
+# supplies distributed-metrics-specific variables.
+#
+# Triggered manually via GitLab UI → "Run pipeline" with
+# `DISTRIBUTED_METRICS_RELEASE_VERSION=X.Y.Z` set. The root `.gitlab-ci.yml`'s
+# include is gated on that variable.
+# ============================================================================
+
+include:
+  - local: "apps/customer/.shared-ci.yml"
+
+distributed-metrics:build:linux:
+  extends: .customer_build_linux
+  variables:
+    CUSTOMER_APP: distributed-metrics
+    CUSTOMER_BINARIES: "-p distributed-metrics"
+
+distributed-metrics:build:macos:
+  extends: .customer_build_macos
+  variables:
+    CUSTOMER_APP: distributed-metrics
+    CUSTOMER_BINARIES: "-p distributed-metrics"
+
+distributed-metrics:release:
+  extends: .customer_release
+  needs:
+    - job: distributed-metrics:build:linux
+      artifacts: true
+    - job: distributed-metrics:build:macos
+      artifacts: true
+  variables:
+    CUSTOMER_APP: distributed-metrics
+    # Map the operator-set env var into the generic name the template reads.
+    RELEASE_VERSION: $DISTRIBUTED_METRICS_RELEASE_VERSION
