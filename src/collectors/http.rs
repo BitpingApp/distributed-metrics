@@ -189,6 +189,10 @@ impl Collector for HttpCollector {
         }
         self.config.common_config.filter_labels(&mut labels);
 
+        let prefix = &self.config.common_config.prefix;
+        counter!(format!("{}http_request_success_total", prefix), &labels).increment(0);
+        counter!(format!("{}http_request_total", prefix), &labels).increment(0);
+
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
                 // Handle error case
@@ -214,6 +218,12 @@ impl Collector for HttpCollector {
 
 impl HttpCollector {
     fn record_failure_with_labels(&self, error: &str, labels: &HashMap<&'static str, String>) {
+        let prefix = &self.config.common_config.prefix;
+
+        // Increment total with base labels (no error_type) so success/failure paths
+        // produce series with matching labels for the success_rate recording rule.
+        counter!(format!("{}http_request_total", prefix), labels).increment(1);
+
         let mut labels = labels.clone();
         let error_type = match error {
             e if e.contains("no record found for Query") => "dns_resolution_failed",
@@ -231,20 +241,7 @@ impl HttpCollector {
         labels.insert("error_type", error_type.into());
         self.config.common_config.filter_labels(&mut labels);
 
-        counter!(
-            format!(
-                "{}http_request_error_total",
-                self.config.common_config.prefix
-            ),
-            &labels
-        )
-        .increment(1);
-
-        counter!(
-            format!("{}http_request_total", self.config.common_config.prefix),
-            &labels
-        )
-        .increment(1);
+        counter!(format!("{}http_request_error_total", prefix), &labels).increment(1);
     }
 
     fn record_success_metrics(

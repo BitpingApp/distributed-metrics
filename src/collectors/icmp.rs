@@ -39,6 +39,11 @@ impl Collector for IcmpCollector {
             "Total number of successful ICMP pings"
         );
 
+        metrics::describe_counter!(
+            format!("{}icmp_ping_total", prefix),
+            "Total number of ICMP ping probes (success + failure)"
+        );
+
         // Latency metrics
         metrics::describe_histogram!(
             format!("{}icmp_ping_duration_ms", prefix),
@@ -184,14 +189,25 @@ impl Collector for IcmpCollector {
         }
         self.config.common_config.filter_labels(&mut labels);
 
+        let prefix = &self.config.common_config.prefix;
+        counter!(format!("{}icmp_ping_success_total", prefix), &labels).increment(0);
+        counter!(format!("{}icmp_ping_total", prefix), &labels).increment(0);
+
         if let Some(result) = response.results.first() {
+            // Increment total with base labels (no error_type, no ip_address) so it
+            // shares a label set with success_total for the recording rule.
+            counter!(format!("{}icmp_ping_total", prefix), &labels).increment(1);
+
             if let Some(error) = &result.error {
                 // Record the specific error from the ICMP response
                 self.record_failure_with_labels(error, &labels);
             }
 
             if let Some(icmp_result) = &result.result {
-                // Add IP address to labels
+                // Record success counter with base labels (matching total).
+                counter!(format!("{}icmp_ping_success_total", prefix), &labels).increment(1);
+
+                // Add IP address to labels for the per-result gauges/histogram.
                 labels.insert("ip_address", icmp_result.ip_address.clone());
                 self.config.common_config.filter_labels(&mut labels);
 
@@ -274,7 +290,5 @@ impl IcmpCollector {
             0.0
         };
         gauge!(format!("{}icmp_ping_success_ratio", prefix), labels).set(success_ratio);
-
-        counter!(format!("{}icmp_ping_success_total", prefix), labels).increment(1);
     }
 }

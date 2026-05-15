@@ -120,6 +120,16 @@ impl Collector for HlsCollector {
             format!("{}hls_errors_by_type", prefix),
             "Errors categorized by type"
         );
+
+        // Lifecycle counters for success-rate recording rule
+        metrics::describe_counter!(
+            format!("{}hls_success_total", prefix),
+            "Total number of successful HLS probes"
+        );
+        metrics::describe_counter!(
+            format!("{}hls_total", prefix),
+            "Total number of HLS probes (success + failure)"
+        );
     }
 
     fn get_frequency(&self) -> std::time::Duration {
@@ -202,8 +212,16 @@ impl Collector for HlsCollector {
         }
         self.config.common_config.filter_labels(&mut labels);
 
+        let prefix = &self.config.common_config.prefix;
+        counter!(format!("{}hls_success_total", prefix), &labels).increment(0);
+        counter!(format!("{}hls_total", prefix), &labels).increment(0);
+
         match response.results.first() {
             Some(result) => {
+                // Increment total once per probe regardless of outcome — matches
+                // success_total's label set so the recording rule can divide cleanly.
+                counter!(format!("{}hls_total", prefix), &labels).increment(1);
+
                 if let Some(error) = &result.error {
                     // Handle error case
                     error!("HLS error occurred: {}", error);
@@ -212,6 +230,9 @@ impl Collector for HlsCollector {
                 }
 
                 if let Some(hls_result) = &result.result {
+                    // Record success counter with base labels
+                    counter!(format!("{}hls_success_total", prefix), &labels).increment(1);
+
                     // Record total duration for successful requests
                     histogram!(
                         format!("{}hls_total_ms", self.config.common_config.prefix),
