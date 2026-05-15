@@ -22,23 +22,45 @@ version: 2
 project_name: distributed-metrics
 
 builds:
-  - id: distributed-metrics
+  # Linux builds via cargo-zigbuild — better glibc-version control than
+  # plain cargo, links against zig's stub libc.
+  - id: distributed-metrics-linux
     builder: rust
     binary: distributed-metrics
-    # Run cargo from the monorepo root so workspace path-deps resolve.
-    # Path is relative to the goreleaser config's directory
-    # (apps/customer/distributed-metrics/).
     dir: ../../..
+    tool: cargo
+    command: zigbuild
     targets:
       - x86_64-unknown-linux-gnu
       - aarch64-unknown-linux-gnu
-      - x86_64-apple-darwin
-      - aarch64-apple-darwin
-    # Default `flags` is `[--release]`; we override to add the workspace
-    # member selector so cargo doesn't try to build every crate.
     flags:
       - --release
       - "-p=distributed-metrics"
+
+  # macOS builds via plain cargo + osxcross. Zigbuild's bundled darwin
+  # sysroot is incomplete for crates like aws-lc-sys / ring (missing
+  # framework defs); osxcross ships the real Apple SDK + clang.
+  # The build-utils/goreleaser image puts osxcross binaries on $PATH
+  # (o64-clang for x86_64, oa64-clang for aarch64).
+  - id: distributed-metrics-darwin
+    builder: rust
+    binary: distributed-metrics
+    dir: ../../..
+    tool: cargo
+    command: build
+    targets:
+      - x86_64-apple-darwin
+      - aarch64-apple-darwin
+    flags:
+      - --release
+      - "-p=distributed-metrics"
+    env:
+      - CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER=o64-clang
+      - CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=oa64-clang
+      - CC_x86_64_apple_darwin=o64-clang
+      - CC_aarch64_apple_darwin=oa64-clang
+      - CXX_x86_64_apple_darwin=o64-clang++
+      - CXX_aarch64_apple_darwin=oa64-clang++
 
 archives:
   - id: default
