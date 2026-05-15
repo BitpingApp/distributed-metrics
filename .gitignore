@@ -51,3 +51,6 @@ target/
 Metrics.yaml
 result
 .direnv
+
+# Goreleaser snapshot output
+dist/
