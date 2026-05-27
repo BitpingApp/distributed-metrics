@@ -12,6 +12,7 @@ use metrics::{counter, gauge, histogram};
 use std::collections::HashMap;
 use std::str::FromStr;
 use tracing::{error, info, warn};
+use xxhash_rust::xxh3::xxh3_64;
 
 pub struct HttpCollector {
     config: &'static HttpConfig,
@@ -144,7 +145,10 @@ impl Collector for HttpCollector {
                         headers: self.config.headers.clone(),
                         regex: self.config.regex.clone(),
                         return_body: Some(true),
-                        status_codes: self.config.status_codes.as_ref()
+                        status_codes: self
+                            .config
+                            .status_codes
+                            .as_ref()
                             .map(|codes| codes.iter().map(|&c| c as f64).collect())
                             .unwrap_or_default(),
                     }))
@@ -264,20 +268,15 @@ impl HttpCollector {
         // Record status code match (only when status_codes is configured)
         if let Some(expected_codes) = &self.config.status_codes {
             let matched = expected_codes.contains(&(result.status_code as u16));
-            gauge!(format!("{}http_status_match", prefix), &status_labels)
-                .set(if matched { 1.0 } else { 0.0 });
+            gauge!(format!("{}http_status_match", prefix), &status_labels).set(if matched {
+                1.0
+            } else {
+                0.0
+            });
         }
 
         // Record body hash (bodyHash in the API response)
-        let mut hash_u64 = 0u64;
-
-        // Use first 8 bytes of hash to create a u64
-        if result.body_hash.len() >= 16 {
-            // Try to parse first 16 chars (8 bytes) of hash as hex
-            if let Ok(hash_value) = u64::from_str_radix(&result.body_hash[0..16], 16) {
-                hash_u64 = hash_value;
-            }
-        }
+        let hash_u64 = xxh3_64(result.body_hash.as_bytes());
 
         gauge!(format!("{}http_body_hash", prefix), labels).set(hash_u64 as f64);
 

@@ -46,6 +46,7 @@ serde_regex = "1.1.0"
 geohash = "0.13.1"
 prometheus-reqwest-remote-write = "0.5"
 prometheus-parse = "0.2"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
 
 [dev-dependencies]
 testcontainers = { version = "0.27", features = ["http_wait"] }
