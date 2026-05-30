@@ -174,6 +174,11 @@ impl Collector for HlsCollector {
                     .proxy(proxy)
                     .configuration(PerformHlsBodyConfiguration {
                         headers: self.config.headers.clone(),
+                        // New optional probe options (BIT-562). None = server
+                        // defaults (TCP transport, default sample caps).
+                        sample_max_bytes: None,
+                        sample_max_duration_secs: None,
+                        transport: Default::default(),
                     })
             })
             .send()
@@ -277,8 +282,11 @@ impl HlsCollector {
 
         // Master Manifest TTFB Metrics
         if let Some(metrics) = &master.metrics {
-            histogram!(format!("{}hls_master_tcp_connect_ms", prefix), labels)
-                .record(metrics.tcp_connect_duration_ms);
+            // tcp_connect is optional (absent on the h3/QUIC path). Record only
+            // when present — never fabricate a 0ms connect into the histogram.
+            if let Some(v) = metrics.tcp_connect_duration_ms {
+                histogram!(format!("{}hls_master_tcp_connect_ms", prefix), labels).record(v);
+            }
 
             histogram!(format!("{}hls_master_ttfb_ms", prefix), labels)
                 .record(metrics.http_ttfb_duration_ms);
@@ -354,8 +362,9 @@ impl HlsCollector {
             }
 
             if let Some(metrics) = &fragment.metrics {
-                histogram!(format!("{}hls_fragment_tcp_connect_ms", prefix), labels)
-                    .record(metrics.tcp_connect_duration_ms);
+                if let Some(v) = metrics.tcp_connect_duration_ms {
+                    histogram!(format!("{}hls_fragment_tcp_connect_ms", prefix), labels).record(v);
+                }
 
                 histogram!(format!("{}hls_fragment_ttfb_ms", prefix), labels)
                     .record(metrics.http_ttfb_duration_ms);
@@ -390,7 +399,7 @@ impl HlsCollector {
             .map(|m| {
                 m.dns_resolve_duration_ms.unwrap_or(0.0)
                     + m.tls_handshake_duration_ms.unwrap_or(0.0)
-                    + m.tcp_connect_duration_ms
+                    + m.tcp_connect_duration_ms.unwrap_or(0.0)
                     + m.http_ttfb_duration_ms
             })
             .unwrap_or(0.0);
@@ -401,7 +410,7 @@ impl HlsCollector {
             .map(|m| {
                 m.dns_resolve_duration_ms.unwrap_or(0.0)
                     + m.tls_handshake_duration_ms.unwrap_or(0.0)
-                    + m.tcp_connect_duration_ms
+                    + m.tcp_connect_duration_ms.unwrap_or(0.0)
                     + m.http_ttfb_duration_ms
             })
             .unwrap_or(0.0);
@@ -428,7 +437,7 @@ impl HlsCollector {
                 .map(|m| {
                     m.dns_resolve_duration_ms.unwrap_or(0.0)
                         + m.tls_handshake_duration_ms.unwrap_or(0.0)
-                        + m.tcp_connect_duration_ms
+                        + m.tcp_connect_duration_ms.unwrap_or(0.0)
                         + m.http_ttfb_duration_ms
                         + first_fragment
                             .download_metrics
@@ -563,11 +572,16 @@ impl From<PerformHlsResponseResultsItemResultMasterRenditionsItem>
                         file: cfm.file.clone(),
                         metrics: cfm.metrics.as_ref().map(|m| PerformHlsResponseResultsItemResultRenditionContentFragmentMetricsItemMetrics{
                             dns_resolve_duration_ms: m.dns_resolve_duration_ms,
-                            http_get_send_duration_ms: m.http_get_send_duration_ms,
-                            http_ttfb_duration_ms: m.http_ttfb_duration_ms,
                             tcp_connect_duration_ms: m.tcp_connect_duration_ms,
-                            tls_handshake_duration_ms: m.tls_handshake_duration_ms
+                            tls_handshake_duration_ms: m.tls_handshake_duration_ms,
+                            quic_handshake_duration_ms: m.quic_handshake_duration_ms,
+                            connection_ready_duration_ms: m.connection_ready_duration_ms,
+                            http_ttfb_duration_ms: m.http_ttfb_duration_ms,
+                            content_download_duration_ms: m.content_download_duration_ms
                         }),
+                        negotiated_protocol: cfm.negotiated_protocol.clone(),
+                        address_family_used: cfm.address_family_used.clone(),
+                        response_headers: cfm.response_headers.clone(),
                     },
                 )
                 .collect(),
@@ -584,13 +598,18 @@ impl From<PerformHlsResponseResultsItemResultMasterRenditionsItem>
                 .metrics
                 .map(|m| PerformHlsResponseResultsItemResultRenditionMetrics {
                     dns_resolve_duration_ms: m.dns_resolve_duration_ms,
-                    http_get_send_duration_ms: m.http_get_send_duration_ms,
-                    http_ttfb_duration_ms: m.http_ttfb_duration_ms,
                     tcp_connect_duration_ms: m.tcp_connect_duration_ms,
                     tls_handshake_duration_ms: m.tls_handshake_duration_ms,
+                    quic_handshake_duration_ms: m.quic_handshake_duration_ms,
+                    connection_ready_duration_ms: m.connection_ready_duration_ms,
+                    http_ttfb_duration_ms: m.http_ttfb_duration_ms,
+                    content_download_duration_ms: m.content_download_duration_ms,
                 }),
             resolution: val.resolution,
             target_duration_secs: val.target_duration_secs,
+            negotiated_protocol: val.negotiated_protocol,
+            address_family_used: val.address_family_used,
+            response_headers: val.response_headers,
         }
     }
 }

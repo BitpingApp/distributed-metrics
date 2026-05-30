@@ -145,6 +145,10 @@ impl Collector for HttpCollector {
                         headers: self.config.headers.clone(),
                         regex: self.config.regex.clone(),
                         return_body: Some(true),
+                        // New optional probe options (BIT-562). None = server
+                        // defaults (no SSL-cert fetch, TCP transport).
+                        ssl_info: None,
+                        transport: Default::default(),
                         status_codes: self
                             .config
                             .status_codes
@@ -237,6 +241,51 @@ impl HttpCollector {
             e if e.contains("server misbehaving") => "server_misbehaving",
             e if e.contains("network is unreachable") => "network_unreachable",
             e if e.contains("Failed to execute HTTP Request") => "http_request_failed",
+            // Hand-rolled timed-probe executor (rust-node http_timed, BIT-559+).
+            // These Display strings come from `TimedHttpError`; match them so the
+            // new connection-layer failures bucket precisely instead of all
+            // collapsing into unknown_error. (Durable follow-up: forward the typed
+            // `error_code` through the API response and switch on that.)
+            e if e.contains("happy-eyeballs exhausted") => "connection_failed",
+            e if e.contains("TCP connect timed out") => "timeout",
+            e if e.contains("TCP connect failed") => "connection_failed",
+            e if e.contains("TLS handshake timed out") => "tls_timeout",
+            // Cert/SNI errors arrive as "TLS handshake failed: invalid peer
+            // certificate…", so this specific arm must precede the generic one.
+            e if e.contains("invalid peer certificate")
+                || e.contains("invalid DNS name for SNI") =>
+            {
+                "tls_cert_invalid"
+            }
+            e if e.contains("TLS handshake failed") => "tls_handshake_failed",
+            e if e.contains("QUIC handshake timed out") => "quic_timeout",
+            e if e.contains("QUIC handshake failed") || e.contains("QUIC ALPN mismatch") => {
+                "quic_handshake_failed"
+            }
+            e if e.contains("too many redirects")
+                || e.contains("redirect loop")
+                || e.contains("redirect to invalid") =>
+            {
+                "redirect_error"
+            }
+            e if e.contains("response timed out")
+                || e.contains("request/response budget exceeded")
+                || e.contains("probe wall-clock budget exceeded") =>
+            {
+                "timeout"
+            }
+            e if e.contains("unsupported content-encoding")
+                || e.contains("body decode failed")
+                || e.contains("body exceeded size cap") =>
+            {
+                "body_error"
+            }
+            e if e.contains("DNS resolution returned no records")
+                || e.contains("DNS resolver failed") =>
+            {
+                "dns_resolution_failed"
+            }
+            e if e.contains("restricted address") => "restricted_host",
             e => {
                 warn!(?e, "Unable to parse http error, returning unknown_error");
                 "unknown_error"
