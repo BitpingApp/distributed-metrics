@@ -203,8 +203,14 @@ impl Collector for HttpCollector {
 
         if let Some(result) = response.results.first() {
             if let Some(error) = &result.error {
-                // Handle error case
-                self.record_failure_with_labels(error, &labels);
+                // Handle error case — pass the proto's typed `error_code` as the
+                // ground-truth classification (the free `error` string only
+                // survives for warn-logging the missing/unknown-code path).
+                self.record_failure_with_labels(
+                    error,
+                    result.error_code.as_deref(),
+                    &labels,
+                );
             } else if let Some(http_result) = &result.result {
                 // Extract status code and other metrics from the HTTP result
                 self.record_success_metrics(http_result, result.duration.unwrap_or(0.0), &labels);
@@ -225,7 +231,12 @@ impl Collector for HttpCollector {
 }
 
 impl HttpCollector {
-    fn record_failure_with_labels(&self, error: &str, labels: &HashMap<&'static str, String>) {
+    fn record_failure_with_labels(
+        &self,
+        error: &str,
+        error_code: Option<&str>,
+        labels: &HashMap<&'static str, String>,
+    ) {
         let prefix = &self.config.common_config.prefix;
 
         // Increment total with base labels (no error_type) so success/failure paths
@@ -233,65 +244,26 @@ impl HttpCollector {
         counter!(format!("{}http_request_total", prefix), labels).increment(1);
 
         let mut labels = labels.clone();
-        let error_type = match error {
-            e if e.contains("no record found for Query") => "dns_resolution_failed",
-            e if e.contains("connection refused") => "connection_refused",
-            e if e.contains("connection timed out") => "timeout",
-            e if e.contains("name resolution failed") => "resolution_failed",
-            e if e.contains("server misbehaving") => "server_misbehaving",
-            e if e.contains("network is unreachable") => "network_unreachable",
-            e if e.contains("Failed to execute HTTP Request") => "http_request_failed",
-            // Hand-rolled timed-probe executor (rust-node http_timed, BIT-559+).
-            // These Display strings come from `TimedHttpError`; match them so the
-            // new connection-layer failures bucket precisely instead of all
-            // collapsing into unknown_error. (Durable follow-up: forward the typed
-            // `error_code` through the API response and switch on that.)
-            e if e.contains("happy-eyeballs exhausted") => "connection_failed",
-            e if e.contains("TCP connect timed out") => "timeout",
-            e if e.contains("TCP connect failed") => "connection_failed",
-            e if e.contains("TLS handshake timed out") => "tls_timeout",
-            // Cert/SNI errors arrive as "TLS handshake failed: invalid peer
-            // certificate…", so this specific arm must precede the generic one.
-            e if e.contains("invalid peer certificate")
-                || e.contains("invalid DNS name for SNI") =>
-            {
-                "tls_cert_invalid"
-            }
-            e if e.contains("TLS handshake failed") => "tls_handshake_failed",
-            e if e.contains("QUIC handshake timed out") => "quic_timeout",
-            e if e.contains("QUIC handshake failed") || e.contains("QUIC ALPN mismatch") => {
-                "quic_handshake_failed"
-            }
-            e if e.contains("too many redirects")
-                || e.contains("redirect loop")
-                || e.contains("redirect to invalid") =>
-            {
-                "redirect_error"
-            }
-            e if e.contains("response timed out")
-                || e.contains("request/response budget exceeded")
-                || e.contains("probe wall-clock budget exceeded") =>
-            {
-                "timeout"
-            }
-            e if e.contains("unsupported content-encoding")
-                || e.contains("body decode failed")
-                || e.contains("body exceeded size cap") =>
-            {
-                "body_error"
-            }
-            e if e.contains("DNS resolution returned no records")
-                || e.contains("DNS resolver failed") =>
-            {
-                "dns_resolution_failed"
-            }
-            e if e.contains("restricted address") => "restricted_host",
-            e => {
-                warn!(?e, "Unable to parse http error, returning unknown_error");
-                "unknown_error"
-            }
-        };
-        labels.insert("error_type", error_type.into());
+        // The API forwards the proto `ErrorCode` enum verbatim (see the
+        // bitping-swarm `ErrorCode` enum — single source of truth). Strip the
+        // redundant `ERROR_CODE_` prefix + lowercase for dashboard ergonomics;
+        // the protocol prefix (`http_`, `hls_`, `dns_`, …) survives so the
+        // bucket name tells you which probe layer failed at a glance.
+        //
+        // New variants the node adds flow into this label automatically — there
+        // is *nothing here* to keep in sync with a hand-listed taxonomy. That's
+        // the whole point of carrying the typed code through.
+        let error_type = error_code
+            .and_then(|c| c.strip_prefix("ERROR_CODE_"))
+            .map(|c| c.to_ascii_lowercase())
+            .unwrap_or_else(|| {
+                warn!(
+                    ?error,
+                    "missing error_code on failure result (old node? unmapped variant?) — bucketing as 'unknown'",
+                );
+                "unknown".to_string()
+            });
+        labels.insert("error_type", error_type);
         self.config.common_config.filter_labels(&mut labels);
 
         counter!(format!("{}http_request_error_total", prefix), &labels).increment(1);
