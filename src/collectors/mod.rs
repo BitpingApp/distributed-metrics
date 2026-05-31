@@ -2,6 +2,7 @@ use color_eyre::eyre::Result;
 use std::time::Duration;
 use thiserror::Error;
 
+pub mod cdn_headers;
 pub mod dns;
 pub mod hls;
 pub mod http;
