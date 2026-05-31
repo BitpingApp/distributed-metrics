@@ -1,23 +1,18 @@
-# Dockerfile used by GoReleaser (see .goreleaser.yaml).
-# GoReleaser invokes `docker buildx build --platform=linux/<arch>` inside a
-# directory where the pre-built binary already lives. We just copy it into a
-# minimal runtime image.
-#
-# Do NOT build distributed-metrics from source here — the binary in this
-# Dockerfile's context was cross-compiled by the parent GitLab CI job.
-# Building from source would require the full monorepo workspace, which
-# isn't present in GoReleaser's per-arch build context.
+ARG VERSION
+ARG TARGETARCH
 
-FROM debian:trixie-slim
+FROM alpine:3.20 AS download
+ARG VERSION
+ARG TARGETARCH
+RUN apk add --no-cache curl tar xz ca-certificates && \
+    curl -fsSL --retry 5 --retry-delay 5 -o /tmp/dm.tar.xz \
+      "https://github.com/BitpingApp/distributed-metrics/releases/download/v${VERSION}/distributed-metrics-${VERSION}-linux-${TARGETARCH}.tar.xz" && \
+    mkdir -p /tmp/extract && \
+    tar -xJf /tmp/dm.tar.xz -C /tmp/extract && \
+    mv /tmp/extract/distributed-metrics-${VERSION}-linux-${TARGETARCH}/distributed-metrics /tmp/distributed-metrics
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY distributed-metrics /usr/local/bin/distributed-metrics
-
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=download --chmod=755 /tmp/distributed-metrics /usr/local/bin/distributed-metrics
 WORKDIR /app
-
 EXPOSE 3000
-
-CMD ["/usr/local/bin/distributed-metrics"]
+ENTRYPOINT ["/usr/local/bin/distributed-metrics"]
