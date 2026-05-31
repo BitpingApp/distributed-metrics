@@ -102,6 +102,17 @@ pub struct HttpConfig {
     pub body: Option<String>,
     pub regex: Option<String>,
     pub status_codes: Option<Vec<u16>>,
+
+    /// When true, request the node to capture TLS certificate metadata
+    /// (issuer, subject, expiry). Enables the http_ssl_* metric family.
+    #[serde(default)]
+    pub ssl_info: Option<bool>,
+
+    /// Transport selection. Defaults to TCP (HTTP/1.1 + HTTP/2). Set to
+    /// "AUTO" to enable HTTP/3 with fallback (populates http_fallback_total),
+    /// or "QUIC" for HTTP/3 only.
+    #[serde(default)]
+    pub transport: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]

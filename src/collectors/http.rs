@@ -9,7 +9,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
-use distributed_metrics::config::HttpConfig;
+use crate::config::HttpConfig;
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::HashMap;
@@ -219,10 +219,16 @@ impl Collector for HttpCollector {
                         headers: self.config.headers.clone(),
                         regex: self.config.regex.clone(),
                         return_body: Some(true),
-                        // New optional probe options (BIT-562). None = server
-                        // defaults (no SSL-cert fetch, TCP transport).
-                        ssl_info: None,
-                        transport: Default::default(),
+                        ssl_info: self.config.ssl_info,
+                        transport: self
+                            .config
+                            .transport
+                            .as_deref()
+                            .and_then(|t| {
+                                crate::types::PerformHttpBodyConfigurationTransport::from_str(t)
+                                    .ok()
+                            })
+                            .unwrap_or_default(),
                         status_codes: self
                             .config
                             .status_codes

@@ -2,7 +2,7 @@ use super::{Collector, CollectorErrors};
 use crate::types::*;
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
-use distributed_metrics::config::HlsConfig;
+use crate::config::HlsConfig;
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::{collections::HashMap, str::FromStr};

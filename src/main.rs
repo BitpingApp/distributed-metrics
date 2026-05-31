@@ -1,7 +1,7 @@
-use collectors::http::HttpCollector;
-use collectors::icmp::IcmpCollector;
-use collectors::{dns, hls, Collector};
 use color_eyre::eyre::Result;
+use distributed_metrics::collectors::http::HttpCollector;
+use distributed_metrics::collectors::icmp::IcmpCollector;
+use distributed_metrics::collectors::{dns, hls, Collector};
 use distributed_metrics::config::{Conf, MetricType};
 use distributed_metrics::remote_write;
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
@@ -10,14 +10,9 @@ use poem::middleware::AddData;
 use poem::web::Data;
 use poem::EndpointExt;
 use poem::{get, handler, listener::TcpListener, Route, Server};
-use progenitor::generate_api;
 use std::sync::LazyLock;
 use tokio::task::JoinSet;
 use tracing::{error, info};
-
-mod collectors;
-
-generate_api!(spec = "./api-spec.json", interface = Builder);
 
 async fn setup() -> Result<()> {
     if std::env::var("RUST_LIB_BACKTRACE").is_err() {
@@ -40,21 +35,6 @@ async fn setup() -> Result<()> {
 
     Ok(())
 }
-
-static API_CLIENT: LazyLock<Client> = LazyLock::new(|| {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "x-api-key",
-        HeaderValue::try_from(std::env::var("BITPING_API_KEY").expect("Couldn't get API key"))
-            .unwrap(),
-    );
-
-    let req_client = reqwest::Client::builder()
-        .default_headers(headers)
-        .build()
-        .unwrap();
-    Client::new_with_client("https://api.bitping.com/v2", req_client)
-});
 
 static CONFIG: LazyLock<Conf> =
     LazyLock::new(|| Conf::new().expect("Failed to load configuration"));

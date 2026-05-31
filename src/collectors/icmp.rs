@@ -6,7 +6,7 @@ use crate::types::{
 };
 use crate::API_CLIENT;
 use color_eyre::eyre::Result;
-use distributed_metrics::config::IcmpConfig;
+use crate::config::IcmpConfig;
 use geohash::Coord;
 use metrics::{counter, gauge, histogram};
 use std::collections::HashMap;
